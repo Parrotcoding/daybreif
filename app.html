@@ -11,27 +11,19 @@
 <style>
 :root{
   --bg:#e5ecf2; --txt:#222; --accent:#0a84ff;
-
-  /* glass */
   --glass-bg:rgba(255,255,255,.25);
   --glass-blur:blur(14px);
   --glass-rad:20px;
   --glass-shad:0 8px 24px rgba(0,0,0,.14);
-
-  /* score bar colours */
   --good:#2ecc71; --mid:#f1c40f; --bad:#e74c3c;
 }
-
 html,body{margin:0;height:100%;overflow:hidden;font-family:'Inter',system-ui,sans-serif;background:var(--bg)}
 body{display:flex;flex-direction:column;touch-action:none}
-
 .glass{background:var(--glass-bg);backdrop-filter:var(--glass-blur);border-radius:var(--glass-rad);box-shadow:var(--glass-shad)}
-
 header{padding:1rem;text-align:center}
 header>.glass{display:inline-block;padding:.35rem 1.4rem;font-weight:600;font-size:1.25rem;color:var(--accent)}
-
 #cards{flex:1 1 auto;overflow-y:auto;padding-bottom:4rem;display:flex;flex-direction:column;align-items:center;gap:1.3rem}
-.weather-card{width:90vw;max-width:320px;padding:1rem 1.2rem;display:grid;grid-template-columns:1fr 70px;row-gap:.45rem;cursor:pointer;color:var(--txt);}
+.weather-card{width:90vw;max-width:320px;padding:1rem 1.2rem;display:grid;grid-template-columns:1fr 70px;row-gap:.45rem;cursor:pointer;color:var(--txt);position:relative;overflow:hidden;backdrop-filter:var(--glass-blur)}
 @media(min-width:560px){.weather-card{max-width:500px}}
 .first{min-height:180px}.other{min-height:110px}
 h2{margin:0;font-size:1.05rem;grid-column:1/3}
@@ -67,7 +59,6 @@ canvas{width:100%;height:650px}@media(min-width:650px){canvas{height:800px}}
 button{background:var(--accent);color:#fff;border:none;cursor:pointer;border-radius:9999px}
 button:disabled{opacity:.6}
 #menu-btn{position:fixed;top:1rem;right:1rem;width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:1.05rem}
-
 .weather-card,.facts,#setup>div,#suggest,.detailShell,.detailNav,#menu-btn{background:var(--glass-bg);backdrop-filter:var(--glass-blur);border-radius:var(--glass-rad);box-shadow:var(--glass-shad)}
 </style>
 </head><body>
@@ -93,16 +84,16 @@ button:disabled{opacity:.6}
 </div></section>
 
 <script>
-/* --- new helper: ISO → local Date ------------------------------------ */
-function localDate(iso){const [y,m,d]=iso.split('-').map(Number);return new Date(y,m-1,d);}
+/// small helper to fix “yesterday” bug:
+function localDate(iso){ const [y,m,d]=iso.split('-').map(Number); return new Date(y,m-1,d); }
 
 const cards=document.getElementById('cards'),setup=document.getElementById('setup'),
-cityIn=document.getElementById('cityInput'),unitSel=document.getElementById('unitSelect'),
-saveBtn=document.getElementById('saveBtn'),suggest=document.getElementById('suggest'),
-titleEl=document.getElementById('headerTitle'),detail=document.getElementById('detailPage'),
-hoverOut=document.getElementById('hoverOut'),detailDate=document.getElementById('detailDate'),
-factsBox=document.getElementById('factsBox'),chartCanvas=document.getElementById('detailChart'),
-backBtn=document.getElementById('backBtn'),menuBtn=document.getElementById('menu-btn');
+      cityIn=document.getElementById('cityInput'),unitSel=document.getElementById('unitSelect'),
+      saveBtn=document.getElementById('saveBtn'),suggest=document.getElementById('suggest'),
+      titleEl=document.getElementById('headerTitle'),detail=document.getElementById('detailPage'),
+      hoverOut=document.getElementById('hoverOut'),detailDate=document.getElementById('detailDate'),
+      factsBox=document.getElementById('factsBox'),chartCanvas=document.getElementById('detailChart'),
+      backBtn=document.getElementById('backBtn'),menuBtn=document.getElementById('menu-btn');
 
 let data,coords,chart;
 
@@ -112,49 +103,70 @@ async function geo(c){
   return r.results[0];
 }
 const bg=s=>s>=75?'good':s>=50?'mid':'bad';
-const score=(d,i)=>{let s=100,t=d.units==='imperial'?(d.avg[i]-32)*5/9:d.avg[i];
+const score=(d,i)=>{ let s=100,t=d.units==='imperial'?(d.avg[i]-32)*5/9:d.avg[i];
   s-=Math.abs(t-22);s-=d.aqi[i]==='–'?15:d.aqi[i]/4;s-=d.wind[i]/8;s-=Math.abs(d.hum[i]-50)/4;
-  return Math.max(1,Math.min(100,Math.round(s)));};
+  return Math.max(1,Math.min(100,Math.round(s))); };
 
-menuBtn.onclick=()=>{cityIn.value=localStorage.getItem('city')||'';unitSel.value=localStorage.getItem('units')||'metric';suggest.style.display='none';setup.style.display='flex';};
-setup.onclick=e=>{if(e.target===setup)setup.style.display='none';};
+menuBtn.onclick=()=>{ cityIn.value=localStorage.getItem('city')||''; unitSel.value=localStorage.getItem('units')||'metric'; suggest.style.display='none'; setup.style.display='flex'; };
+setup.onclick=e=>{ if(e.target===setup) setup.style.display='none'; };
 
+// load city
 async function loadCity(city,u){
-  const g=await geo(city);coords={lat:g.latitude,lon:g.longitude,tz:g.timezone};
-  const wx=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&daily=temperature_2m_max,temperature_2m_min,relative_humidity_2m_mean,windspeed_10m_max&timezone=${coords.tz}&temperature_unit=${u==='imperial'?'fahrenheit':'celsius'}&wind_speed_unit=${u==='imperial'?'mph':'kmh'}`).then(r=>r.json());
+  const g=await geo(city); coords={lat:g.latitude,lon:g.longitude,tz:g.timezone};
+  const wx=await fetch(
+    `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}`+
+    `&daily=temperature_2m_max,temperature_2m_min,relative_humidity_2m_mean,windspeed_10m_max`+
+    `&timezone=${coords.tz}&temperature_unit=${u==='imperial'?'fahrenheit':'celsius'}`+
+    `&wind_speed_unit=${u==='imperial'?'mph':'kmh'}`
+  ).then(r=>r.json());
   wx.units=u;
   wx.avg=wx.daily.temperature_2m_max.map((m,i)=>(m+wx.daily.temperature_2m_min[i])/2);
-  const aq=await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${coords.lat}&longitude=${coords.lon}&hourly=us_aqi&timezone=${coords.tz}&start=${wx.daily.time[0]}T00:00&end=${wx.daily.time[6]}T23:00`).then(r=>r.json()).catch(()=>({}));
+
+  const aq=await fetch(
+    `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${coords.lat}&longitude=${coords.lon}`+
+    `&hourly=us_aqi&timezone=${coords.tz}`+
+    `&start=${wx.daily.time[0]}T00:00&end=${wx.daily.time[6]}T23:00`
+  ).then(r=>r.json()).catch(()=>({}));
   wx.aqi=Array(7).fill('–');
   if(aq.hourly?.time){
     const map={};
-    aq.hourly.time.forEach((t,i)=>{const d=t.slice(0,10);(map[d]??=[]).push(aq.hourly.us_aqi[i]);});
-    wx.daily.time.forEach((d,i)=>{const arr=map[d];if(arr)wx.aqi[i]=Math.max(...arr);});
+    aq.hourly.time.forEach((t,i)=>{ const d=t.slice(0,10); (map[d]??=[]).push(aq.hourly.us_aqi[i]); });
+    wx.daily.time.forEach((d,i)=>{ const arr=map[d]; if(arr) wx.aqi[i]=Math.max(...arr); });
   }
-  wx.wind=wx.daily.windspeed_10m_max;wx.hum=wx.daily.relative_humidity_2m_mean;
+
+  wx.wind=wx.daily.windspeed_10m_max;
+  wx.hum=wx.daily.relative_humidity_2m_mean;
   wx.score=wx.daily.time.map((_,i)=>score(wx,i));
   data=wx;
   titleEl.textContent=`Weather 7 — ${city}`;
   renderCards();
 }
 
+// render cards
 function renderCards(){
   cards.innerHTML='';
-  const d=data,suf=d.units==='imperial'?'°F':'°C',today=localDate(new Date().toISOString().slice(0,10));
+  const d=data, suf=d.units==='imperial'?'°F':'°C';
+  const today=localDate(new Date().toISOString().slice(0,10));
+
   d.daily.time.forEach((iso,i)=>{
-    const date=localDate(iso);            /* fixed */
+    const date=localDate(iso);              // fixed
     if(date<today) return;
+
     const card=document.createElement('div');
     card.className=`weather-card glass ${bg(d.score[i])} ${cards.childElementCount?'other':'first'}`;
     card.innerHTML=`
       <h2>${date.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})}</h2>
       <div class="score">${d.score[i]}</div>
       <div class="data">
-        <div class="temps"><span>⬆ ${Math.round(d.daily.temperature_2m_max[i])}${suf}</span>
-                           <span>⬇ ${Math.round(d.daily.temperature_2m_min[i])}${suf}</span></div>
-        <div class="extra"><span>💧 ${Math.round(d.hum[i])}%</span>
-                           <span>💨 ${Math.round(d.wind[i])}</span>
-                           <span>🗺 AQI ${d.aqi[i]}</span></div>
+        <div class="temps">
+          <span>⬆ ${Math.round(d.daily.temperature_2m_max[i])}${suf}</span>
+          <span>⬇ ${Math.round(d.daily.temperature_2m_min[i])}${suf}</span>
+        </div>
+        <div class="extra">
+          <span>💧 ${Math.round(d.hum[i])}%</span>
+          <span>💨 ${Math.round(d.wind[i])}</span>
+          <span>🗺 AQI ${d.aqi[i]}</span>
+        </div>
       </div>`;
     if(cards.childElementCount) card.querySelector('.extra').style.display='none';
     card.onclick=()=>openDetail(i);
@@ -162,15 +174,20 @@ function renderCards(){
   });
 }
 
+// detail view
 async function openDetail(idx){
   const d=data,u=d.units,suf=u==='imperial'?'°F':'°C',iso=d.daily.time[idx];
-  detailDate.textContent=localDate(iso)           /* fixed */
+  detailDate.textContent=localDate(iso)                                   // fixed
     .toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
-  chart?.destroy();hoverOut.textContent='';
+  chart?.destroy(); hoverOut.textContent='';
   let labels=[],temps=[];
   try{
-    const h=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&hourly=temperature_2m&start_date=${iso}&end_date=${iso}&timezone=${coords.tz}&temperature_unit=${u==='imperial'?'fahrenheit':'celsius'}`).then(r=>r.json());
-    if(h.hourly?.time){labels=h.hourly.time.map(t=>t.slice(11,16));temps=h.hourly.temperature_2m;}
+    const h=await fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}`+
+      `&hourly=temperature_2m&start_date=${iso}&end_date=${iso}`+
+      `&timezone=${coords.tz}&temperature_unit=${u==='imperial'?'fahrenheit':'celsius'}`
+    ).then(r=>r.json());
+    if(h.hourly?.time){ labels=h.hourly.time.map(t=>t.slice(11,16)); temps=h.hourly.temperature_2m; }
   }catch{}
   chart=new Chart(chartCanvas,{type:'line',data:{labels,datasets:[{data:temps,tension:.35,borderWidth:3,pointRadius:0,borderColor:'#ff9100'}]},
     options:{plugins:{tooltip:{enabled:false},legend:{display:false}},interaction:{intersect:false,mode:'nearest'},animation:false}});
@@ -181,34 +198,50 @@ async function openDetail(idx){
   chartCanvas.onmouseleave=chartCanvas.ontouchend=()=>hoverOut.textContent='';
   factsBox.innerHTML='';
   const row=(ic,l,v)=>factsBox.insertAdjacentHTML('beforeend',`<div class="factRow glass"><span><span class="icon">${ic}</span>${l}</span><span class="val">${v}</span></div>`);
-  row('🗺','Air Quality Index',d.aqi[idx]);row('🌿','Pollen','1');row('💧','Humidity',`${Math.round(d.hum[idx])}%`);
-  row('💨','Wind',`${Math.round(d.wind[idx])} ${u==='imperial'?'mph':'km/h'}`);
+  row('🗺','Air Quality Index',d.aqi[idx]);
+  row('🌿','Pollen Count','1');
+  row('💧','Humidity',`${Math.round(d.hum[idx])}%`);
+  row('💨','Wind Speed',`${Math.round(d.wind[idx])} ${u==='imperial'?'mph':'km/h'}`);
   detail.style.display='flex';
 }
 backBtn.onclick=e=>{e.preventDefault();detail.style.display='none';};
 
+// suggestions
 let sCtrl;
 cityIn.oninput=async()=>{
-  const q=cityIn.value.trim();suggest.innerHTML='';suggest.style.display='none';if(q.length<3)return;
-  sCtrl?.abort();sCtrl=new AbortController();
+  const q=cityIn.value.trim(); suggest.innerHTML=''; suggest.style.display='none';
+  if(q.length<3) return;
+  sCtrl?.abort(); sCtrl=new AbortController();
   try{
     const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=8`,{signal:sCtrl.signal}).then(r=>r.json());
     r.results?.forEach(l=>{
       const li=document.createElement('li');
       li.textContent=`${l.name}${l.admin1?', '+l.admin1:''}, ${l.country}`;
-      li.dataset.city=l.name;suggest.appendChild(li);
+      li.dataset.city=l.name; suggest.appendChild(li);
     });
     if(suggest.childElementCount) suggest.style.display='block';
   }catch{}
 };
-suggest.onclick=e=>{if(e.target.tagName!=='LI')return;cityIn.value=e.target.dataset.city;suggest.style.display='none';};
+suggest.onclick=e=>{if(e.target.tagName!=='LI') return; cityIn.value=e.target.dataset.city; suggest.style.display='none';};
 
+// save and continue
 saveBtn.onclick=()=>{
-  const c=cityIn.value.trim();if(!c)return;
-  localStorage.setItem('city',c);localStorage.setItem('units',unitSel.value);
-  setup.style.display='none';loadCity(c,unitSel.value);
+  const c=cityIn.value.trim(); if(!c) return;
+  localStorage.setItem('city',c);
+  localStorage.setItem('units',unitSel.value);
+  setup.style.display='none';
+  loadCity(c,unitSel.value);
 };
 
-(()=>{const c=localStorage.getItem('city');if(c)loadCity(c,localStorage.getItem('units')||'metric');})();
+// on load: either prompt or auto-load
+(()=>{
+  const c = localStorage.getItem('city'),
+        u = localStorage.getItem('units');
+  if(c && u) {
+    loadCity(c,u);
+  } else {
+    setup.style.display='flex';
+  }
+})();
 </script>
 </body></html>
