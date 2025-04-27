@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Weather 7</title>
 
-  <!-- PWA manifest (for completeness) -->
+  <!-- PWA manifest & theme color -->
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#0a84ff">
 
-  <!-- iOS standalone -->
+  <!-- iOS standalone support -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
 
@@ -20,10 +20,8 @@
   <style>
     :root{
       --bg:#e5ecf2; --txt:#222; --accent:#0a84ff;
-      --glass-bg:rgba(255,255,255,.25);
-      --glass-blur:blur(14px);
-      --glass-rad:20px;
-      --glass-shad:0 8px 24px rgba(0,0,0,.14);
+      --glass-bg:rgba(255,255,255,.25); --glass-blur:blur(14px);
+      --glass-rad:20px; --glass-shad:0 8px 24px rgba(0,0,0,.14);
       --good:#2ecc71; --mid:#f1c40f; --bad:#e74c3c;
     }
     html,body{margin:0;height:100%;overflow:hidden;font-family:'Inter',system-ui,sans-serif;background:var(--bg)}
@@ -47,7 +45,6 @@
 
     #detailPage{position:fixed;inset:0;padding:1.2rem;display:none;flex-direction:column;overflow-y:auto;z-index:40}
     .detailShell{display:flex;flex-direction:column;gap:1.3rem}
-    .detailNav{display:flex;align-items:center;gap:.6rem;padding:.8rem 1rem}
     .detailNav a{color:var(--accent);text-decoration:none;font-weight:600;font-size:1.05rem}
     .detailDate{font-weight:700;font-size:2.05rem;padding:0 1rem}
     canvas{width:100%;height:650px}@media(min-width:650px){canvas{height:800px}}
@@ -82,41 +79,26 @@
     <div class="detailShell glass">
       <div class="detailNav glass"><a href="#" id="backBtn">← Back</a></div>
       <h1 class="detailDate" id="detailDate"></h1>
-      <div style="padding:0 1rem">
-        <canvas id="detailChart"></canvas>
-        <div class="hoverOut" id="hoverOut"></div>
-      </div>
+      <div style="padding:0 1rem"><canvas id="detailChart"></canvas><div class="hoverOut" id="hoverOut"></div></div>
       <div class="facts glass" id="factsBox"></div>
     </div>
   </section>
 
   <section id="setup"><div class="glass">
     <h2>Select location</h2>
-    <label>City</label>
-    <div id="sbox">
-      <input id="cityInput" class="pill" autocomplete="off">
-      <ul id="suggest"></ul>
-    </div>
-    <label>Units</label>
-    <select id="unitSelect" class="pill">
-      <option value="metric">Celsius / km h</option>
-      <option value="imperial">Fahrenheit / mph</option>
-    </select>
+    <label>City</label><div id="sbox"><input id="cityInput" class="pill" autocomplete="off"><ul id="suggest"></ul></div>
+    <label>Units</label><select id="unitSelect" class="pill"><option value="metric">Celsius / km h</option><option value="imperial">Fahrenheit / mph</option></select>
     <button id="saveBtn" class="pill">Save & continue</button>
   </div></section>
 
   <script>
     // Register service worker
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/service-worker.js')
-        .catch(err=>console.error('SW failed:',err));
+      navigator.serviceWorker.register('/service-worker.js').catch(err=>console.error('SW failed:',err));
     }
 
     // Helper: parse local date
-    function localDate(iso){
-      const [y,m,d]=iso.split('-').map(Number);
-      return new Date(y,m-1,d);
-    }
+    function localDate(iso){ const [y,m,d]=iso.split('-').map(Number); return new Date(y,m-1,d); }
 
     // DOM refs
     const cards=document.getElementById('cards'),
@@ -137,35 +119,20 @@
     let data, coords, chart;
 
     async function geo(c){
-      const r=await fetch(
-        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(c)}&count=1`
-      ).then(r=>r.json());
+      const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(c)}&count=1`).then(r=>r.json());
       if(!r.results?.length) throw Error('city');
       return r.results[0];
     }
-
     const tint=s=>s>=75?'good':s>=50?'mid':'bad';
-    const score=(d,i)=>{
-      let s=100,
-          t=d.units==='imperial'?(d.avg[i]-32)*5/9:d.avg[i];
-      s-=Math.abs(t-22);
-      s-=d.aqi[i]==='–'?15:d.aqi[i]/4;
-      s-=d.wind[i]/8;
-      s-=Math.abs(d.hum[i]-50)/4;
-      return Math.max(1,Math.min(100,Math.round(s)));
-    };
+    const score=(d,i)=>{let s=100,t=d.units==='imperial'?(d.avg[i]-32)*5/9:d.avg[i];
+      s-=Math.abs(t-22);s-=d.aqi[i]==='–'?15:d.aqi[i]/4;s-=d.wind[i]/8;s-=Math.abs(d.hum[i]-50)/4;
+      return Math.max(1,Math.min(100,Math.round(s)));};
 
-    menuBtn.onclick=()=>{
-      cityIn.value=localStorage.getItem('city')||'';
-      unitSel.value=localStorage.getItem('units')||'metric';
-      suggest.style.display='none';
-      setup.style.display='flex';
-    };
-    setup.onclick=e=>{ if(e.target===setup) setup.style.display='none'; };
+    menuBtn.onclick=()=>{cityIn.value=localStorage.getItem('city')||'';unitSel.value=localStorage.getItem('units')||'metric';suggest.style.display='none';setup.style.display='flex';};
+    setup.onclick=e=>{if(e.target===setup)setup.style.display='none';};
 
     async function loadCity(city,u){
-      const g=await geo(city);
-      coords={lat:g.latitude,lon:g.longitude,tz:g.timezone};
+      const g=await geo(city);coords={lat:g.latitude,lon:g.longitude,tz:g.timezone};
       const wx=await fetch(
         `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}`+
         `&daily=temperature_2m_max,temperature_2m_min,relative_humidity_2m_mean,windspeed_10m_max`+
@@ -173,8 +140,7 @@
         `&temperature_unit=${u==='imperial'?'fahrenheit':'celsius'}`+
         `&wind_speed_unit=${u==='imperial'?'mph':'kmh'}`
       ).then(r=>r.json());
-      wx.units=u;
-      wx.avg=wx.daily.temperature_2m_max.map((m,i)=>(m+wx.daily.temperature_2m_min[i])/2);
+      wx.units=u;wx.avg=wx.daily.temperature_2m_max.map((m,i)=>(m+wx.daily.temperature_2m_min[i])/2);
 
       const aq=await fetch(
         `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${coords.lat}&longitude=${coords.lon}`+
@@ -183,132 +149,61 @@
       ).then(r=>r.json()).catch(()=>({}));
       wx.aqi=Array(7).fill('–');
       if(aq.hourly?.time){
-        const mp={};
-        aq.hourly.time.forEach((t,i)=>{
-          const d=t.slice(0,10);
-          (mp[d]??=[]).push(aq.hourly.us_aqi[i]);
-        });
-        wx.daily.time.forEach((d,i)=>{
-          const arr=mp[d];
-          if(arr) wx.aqi[i]=Math.max(...arr);
-        });
+        const mp={};aq.hourly.time.forEach((t,i)=>{const d=t.slice(0,10);(mp[d]??=[]).push(aq.hourly.us_aqi[i]);});
+        wx.daily.time.forEach((d,i)=>{const arr=mp[d];if(arr)wx.aqi[i]=Math.max(...arr);});
       }
 
-      wx.wind=wx.daily.windspeed_10m_max;
-      wx.hum =wx.daily.relative_humidity_2m_mean;
+      wx.wind=wx.daily.windspeed_10m_max;wx.hum=wx.daily.relative_humidity_2m_mean;
       wx.score=wx.daily.time.map((_,i)=>score(wx,i));
-      data=wx;
-      hdr.textContent=`Weather 7 — ${city}`;
-      renderCards();
+      data=wx;hdr.textContent=`Weather 7 — ${city}`;renderCards();
     }
 
     function renderCards(){
-      cards.innerHTML='';
-      const d=data,
-            suf=d.units==='imperial'?'°F':'°C',
-            today=localDate(new Date().toISOString().slice(0,10));
-
+      cards.innerHTML='';const d=data,suf=d.units==='imperial'?'°F':'°C';const today=localDate(new Date().toISOString().slice(0,10));
       d.daily.time.forEach((iso,i)=>{
-        const date=localDate(iso);
-        if(date<today) return;
-
+        const date=localDate(iso);if(date<today)return;
         const isFirst=cards.childElementCount===0;
-        const label=isFirst
-          ? 'Today'
-          : date.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
-
-        const card=document.createElement('div');
-        card.className=`weather-card glass ${tint(d.score[i])} ${isFirst?'first':'other'}`;
-        card.innerHTML=`
-          <h2>${label}</h2>
-          <div class="score">${d.score[i]}</div>
-          <div class="data">
-            <div class="temps">
-              <span>⬆ ${Math.round(d.daily.temperature_2m_max[i])}${suf}</span>
-              <span>⬇ ${Math.round(d.daily.temperature_2m_min[i])}${suf}</span>
-            </div>
-            <div class="extra">
-              <span>💧 ${Math.round(d.hum[i])}%</span>
-              <span>💨 ${Math.round(d.wind[i])}</span>
-              <span>🗺 AQI ${d.aqi[i]}</span>
-            </div>
-          </div>`;
-        if(!isFirst) card.querySelector('.extra').style.display='none';
-        card.onclick=()=>openDetail(i);
-        cards.appendChild(card);
+        const label=isFirst?'Today':date.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+        const card=document.createElement('div');card.className=`weather-card glass ${tint(d.score[i])} ${isFirst?'first':'other'}`;
+        card.innerHTML=`<h2>${label}</h2><div class="score">${d.score[i]}</div><div class="data"><div class="temps"><span>⬆ ${Math.round(d.daily.temperature_2m_max[i])}${suf}</span><span>⬇ ${Math.round(d.daily.temperature_2m_min[i])}${suf}</span></div><div class="extra"><span>💧 ${Math.round(d.hum[i])}%</span><span>💨 ${Math.round(d.wind[i])}</span><span>🗺 AQI ${d.aqi[i]}</span></div></div>`;
+        if(!isFirst)card.querySelector('.extra').style.display='none';
+        card.onclick=()=>openDetail(i);cards.appendChild(card);
       });
     }
 
     async function openDetail(idx){
       const d=data,u=d.units,suf=u==='imperial'?'°F':'°C',iso=d.daily.time[idx];
-      detailDate.textContent=localDate(iso)
-        .toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
-      chart?.destroy(); hoverOut.textContent='';
+      detailDate.textContent=localDate(iso).toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
+      chart?.destroy();hoverOut.textContent='';
       let labels=[],temps=[];
-      try{
-        const h=await fetch(
-          `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}`+
-          `&hourly=temperature_2m&start_date=${iso}&end_date=${iso}`+
-          `&timezone=${coords.tz}`+
-          `&temperature_unit=${u==='imperial'?'fahrenheit':'celsius'}`
-        ).then(r=>r.json());
-        if(h.hourly?.time){labels=h.hourly.time.map(t=>t.slice(11,16));temps=h.hourly.temperature_2m;}
-      }catch{}
-      chart=new Chart(chartCanvas,{type:'line',data:{labels,datasets:[{data:temps,tension:.35,borderWidth:3,pointRadius:0,borderColor:'#ff9100'}]},
-        options:{plugins:{tooltip:{enabled:false},legend:{display:false}},interaction:{intersect:false,mode:'nearest'},animation:false}});
-      chartCanvas.onmousemove=chartCanvas.ontouchmove=e=>{
-        const pt=chart.getElementsAtEventForMode(e,'nearest',{intersect:false},false)[0];
-        if(pt) hoverOut.textContent=`${labels[pt.index]} • ${temps[pt.index]}${suf}`;
-      };
+      try{const h=await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}`+
+        `&hourly=temperature_2m&start_date=${iso}&end_date=${iso}`+
+        `&timezone=${coords.tz}`+
+        `&temperature_unit=${u==='imperial'?'fahrenheit':'celsius'}`
+      ).then(r=>r.json());
+      if(h.hourly?.time){labels=h.hourly.time.map(t=>t.slice(11,16));temps=h.hourly.temperature_2m;}}catch{}
+      chart=new Chart(chartCanvas,{type:'line',data:{labels,datasets:[{data:temps,tension:.35,borderWidth:3,pointRadius:0,borderColor:'#ff9100'}]},options:{plugins:{tooltip:{enabled:false},legend:{display:false}},interaction:{intersect:false,mode:'nearest'},animation:false}});
+      chartCanvas.onmousemove=chartCanvas.ontouchmove=e=>{const pt=chart.getElementsAtEventForMode(e,'nearest',{intersect:false},false)[0];if(pt)hoverOut.textContent=`${labels[pt.index]} • ${temps[pt.index]}${suf}`;};
       chartCanvas.onmouseleave=chartCanvas.ontouchend=()=>hoverOut.textContent='';
-      factsBox.innerHTML='';
-      const row=(ic,l,v)=>factsBox.insertAdjacentHTML('beforeend',
-        `<div class="factRow glass"><span><span class="icon">${ic}</span>${l}</span><span class="val">${v}</span></div>`);
-      row('🗺','Air Quality Index',d.aqi[idx]);
-      row('🌿','Pollen Count','1');
-      row('💧','Humidity',`${Math.round(d.hum[idx])}%`);
-      row('💨','Wind Speed',`${Math.round(d.wind[idx])} ${u==='imperial'?'mph':'km/h'}`);
+      factsBox.innerHTML='';const row=(ic,l,v)=>factsBox.insertAdjacentHTML('beforeend',`<div class="factRow glass"><span><span class="icon">${ic}</span>${l}</span><span class="val">${v}</span></div>`);
+      row('🗺','Air Quality Index',d.aqi[idx]);row('🌿','Pollen Count','1');row('💧','Humidity',`${Math.round(d.hum[idx])}%`);row('💨','Wind Speed',`${Math.round(d.wind[idx])} ${u==='imperial'?'mph':'km/h'}`);
       detail.style.display='flex';
     }
     backBtn.onclick=e=>{e.preventDefault();detail.style.display='none';};
 
     let sCtrl;
     cityIn.oninput=async()=>{
-      const q=cityIn.value.trim(); suggest.innerHTML=''; suggest.style.display='none';
-      if(q.length<3) return;
-      sCtrl?.abort(); sCtrl=new AbortController();
-      try{
-        const r=await fetch(
-          `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=8`,
-          {signal:sCtrl.signal}
-        ).then(r=>r.json());
-        r.results?.forEach(l=>{
-          const li=document.createElement('li');
-          li.textContent=`${l.name}${l.admin1?', '+l.admin1:''}, ${l.country}`;
-          li.dataset.city=l.name; suggest.appendChild(li);
-        });
-        if(suggest.childElementCount) suggest.style.display='block';
-      }catch{}
-    };
+      const q=cityIn.value.trim();suggest.innerHTML='';suggest.style.display='none';if(q.length<3)return;sCtrl?.abort();sCtrl=new AbortController();
+      try{const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=8`,{signal:sCtrl.signal}).then(r=>r.json());
+      r.results?.forEach(l=>{const li=document.createElement('li');li.textContent=`${l.name}${l.admin1?', '+l.admin1:''}, ${l.country}`;li.dataset.city=l.name;suggest.appendChild(li);});if(suggest.childElementCount)suggest.style.display='block';}catch{}};
     suggest.onclick=e=>{if(e.target.tagName!=='LI')return;cityIn.value=e.target.dataset.city;suggest.style.display='none';};
 
-    saveBtn.onclick=()=>{
-      const c=cityIn.value.trim(); if(!c) return;
-      localStorage.setItem('city',c);
-      localStorage.setItem('units',unitSel.value);
-      setup.style.display='none';
-      loadCity(c,unitSel.value);
-    };
+    saveBtn.onclick=()=>{const c=cityIn.value.trim();if(!c)return;localStorage.setItem('city',c);localStorage.setItem('units',unitSel.value);setup.style.display='none';loadCity(c,unitSel.value);};
 
-    // On load: prompt or auto-load
     (()=>{
-      const c=localStorage.getItem('city'),
-            u=localStorage.getItem('units');
-      if(c && u) {
-        loadCity(c,u);
-      } else {
-        setup.style.display='flex';
-      }
+      const c=localStorage.getItem('city'),u=localStorage.getItem('units');
+      if(c&&u)loadCity(c,u);else setup.style.display='flex';
     })();
   </script>
 </body>
