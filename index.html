@@ -11,12 +11,10 @@
 
   <!-- iOS standalone support -->
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Weather 7">
   <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192.png">
-  <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-192.png">
-  <link rel="apple-touch-icon" sizes="120x120" href="/icons/icon-192.png">
-  <link rel="apple-touch-icon" sizes="76x76"   href="/icons/icon-192.png">
 
   <!-- Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
@@ -31,24 +29,50 @@
       --txt: #222;
     }
     html, body {
-      margin: 0; height: 100vh;
-      display: flex; align-items: center; justify-content: center;
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-family: 'Inter', system-ui, sans-serif;
-      background: var(--bg); text-align: center;
+      background: var(--bg);
+      text-align: center;
     }
     .glass {
-      background: var(--glass); backdrop-filter: var(--blur);
-      border-radius: var(--radius); box-shadow: 0 8px 24px rgba(0,0,0,.15);
-      padding: 2rem; max-width: 320px; width: 90vw;
+      background: var(--glass);
+      backdrop-filter: var(--blur);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 24px rgba(0,0,0,.15);
+      padding: 2rem;
+      max-width: 320px;
+      width: 90vw;
     }
     h1 { margin-top: 0; color: var(--accent); }
     p { margin: 1rem 0; color: var(--txt); }
     button {
-      margin-top: 1rem; padding: .75rem 1.2rem;
-      font-size: 1rem; border: none; border-radius: 9999px;
-      background: var(--accent); color: #fff; cursor: pointer;
+      margin-top: 1rem;
+      padding: .75rem 1.2rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 9999px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
     }
-    #installBtn { display: none; }
+    #installBtn {
+      display: none;
+      position: fixed;
+      bottom: 1rem;
+      right: 1rem;
+      padding: 1rem;
+      border-radius: 9999px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,.15);
+      z-index: 1000;
+    }
   </style>
 </head>
 <body>
@@ -61,50 +85,53 @@
   <button id="installBtn">⬇️ Install</button>
 
   <script>
-    // Register SW
+    // register service worker
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/service-worker.js')
-        .catch(err => console.error('SW registration failed:', err));
+      navigator.serviceWorker.register('/service-worker.js').catch(() => {});
     }
 
     const ua = navigator.userAgent || '';
     const isAndroid = /Android/i.test(ua);
-    const isIOS = /iPhone|iPad|iPod/.test(ua) && !window.MSStream;
-    const isMacSafari = /Macintosh/.test(ua) && /Safari/.test(ua) && !/Chrome|Chromium|Edg|Firefox/.test(ua);
+    const isIPadOS = /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;
+    const isIOS    = /iPhone|iPod/.test(ua) && !window.MSStream;
+    const isMacSafari = /Macintosh/.test(ua)
+      && /Safari/.test(ua)
+      && !/Chrome|Chromium|Edg|Firefox/.test(ua)
+      && navigator.maxTouchPoints === 0;
 
-    const content = document.getElementById('content');
-    const msg     = document.getElementById('message');
-    const goApp   = document.getElementById('goApp');
+    const content    = document.getElementById('content');
+    const msg        = document.getElementById('message');
+    const goApp      = document.getElementById('goApp');
     const installBtn = document.getElementById('installBtn');
     let deferredPrompt;
 
-    // Android → PWA shell
     if (isAndroid) {
-      location.href = '/app.html';
+      // Android → PWA shell
+      window.location.href = '/app.html';
     }
-    // iOS → A2HS instructions
-    else if (isIOS) {
+    else if (isIOS || isIPadOS) {
+      // iPhone or iPadOS → Add to Home Screen instructions
       msg.innerHTML = `
-        To install on iOS:<br>
+        To install on iOS/iPadOS:<br>
         1. Tap the ⬆︎ share icon<br>
         2. Select “Add to Home Screen”<br>
         3. Open from your Home Screen
       `;
     }
-    // macOS Safari → Add to Dock instructions
     else if (isMacSafari) {
+      // macOS Safari → Add to Dock instructions
       msg.innerHTML = `
         To install on macOS Safari:<br>
-        1. In the menu bar, choose File → Add to Dock…<br>
-        2. Or click the share icon and select “Add to Dock”<br>
+        1. In the menu bar choose File → Add to Dock…<br>
+        2. Or click share icon and select “Add to Dock”<br>
         3. Launch from your Dock for standalone mode
       `;
     }
-    // Others → show Go to App and Install button
     else {
+      // fallback → show Go to App + PWA install prompt
       msg.textContent = 'Click below to open the full app experience.';
       goApp.style.display = 'inline-block';
-      goApp.onclick = () => location.href = '/app.html';
+      goApp.onclick = () => { window.location.href = '/app.html'; };
 
       window.addEventListener('beforeinstallprompt', e => {
         e.preventDefault();
