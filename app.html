@@ -37,7 +37,6 @@
     html, body {
       margin: 0;
       height: 100%;
-      /* safe-area insets for iOS notch & home indicator */
       padding-top: env(safe-area-inset-top);
       padding-bottom: env(safe-area-inset-bottom);
       overflow: hidden;
@@ -215,8 +214,7 @@
       font-weight: 600;
     }
     #setup input,
-    #setup select,
-    #setup button {
+    #setup select {
       width: 100%;
       padding: .75rem 1rem;
       font-size: 1rem;
@@ -225,6 +223,23 @@
       background: rgba(255,255,255,.6);
       box-sizing: border-box;
     }
+
+    /* Save button: blue glass + spacing */
+    #saveBtn {
+      width: 100%;
+      margin-top: 1.2rem;
+      padding: .75rem 1rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 12px;
+      background: var(--accent);
+      color: #fff;
+      backdrop-filter: var(--blur);
+      box-shadow: 0 8px 24px rgba(0,0,0,.15);
+      box-sizing: border-box;
+      cursor: pointer;
+    }
+
     #sbox { position: relative; }
     #suggest {
       position: absolute;
@@ -247,9 +262,7 @@
       background: rgba(0,0,0,.05);
     }
 
-    button { background: var(--accent); color: #fff; cursor: pointer; }
     button:disabled { opacity: .6; }
-
     #menu-btn {
       position: fixed;
       top: calc(env(safe-area-inset-top) + 1rem);
@@ -262,6 +275,7 @@
       align-items: center; justify-content: center;
       box-shadow: 0 4px 12px rgba(0,0,0,.15);
       font-size: 1.05rem;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -300,20 +314,20 @@
   </section>
 
   <script>
-    // register SW
+    // Register service worker
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/service-worker.js').catch(()=>{});
+      navigator.serviceWorker.register('/service-worker.js').catch(() => {});
     }
 
     // DOM refs
-    const cards = document.getElementById('cards'),
-          setup = document.getElementById('setup'),
-          cityIn = document.getElementById('cityInput'),
-          unitSel = document.getElementById('unitSelect'),
-          saveBtn = document.getElementById('saveBtn'),
-          suggest = document.getElementById('suggest'),
-          detail = document.getElementById('detailPage'),
-          hoverOut = document.getElementById('hoverOut'),
+    const cards      = document.getElementById('cards'),
+          setup      = document.getElementById('setup'),
+          cityIn     = document.getElementById('cityInput'),
+          unitSel    = document.getElementById('unitSelect'),
+          saveBtn    = document.getElementById('saveBtn'),
+          suggest    = document.getElementById('suggest'),
+          detail     = document.getElementById('detailPage'),
+          hoverOut   = document.getElementById('hoverOut'),
           detailDate = document.getElementById('detailDate'),
           factsBox   = document.getElementById('factsBox'),
           chartCanvas= document.getElementById('detailChart'),
@@ -323,14 +337,11 @@
     let data, coords, chart;
 
     async function geo(c) {
-      const r = await fetch(
-        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(c)}&count=1`
-      ).then(r=>r.json());
+      const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(c)}&count=1`).then(r=>r.json());
       if (!r.results?.length) throw Error('city');
       return r.results[0];
     }
-
-    const bg = s => s>=75 ? 'good' : s>=50 ? 'mid' : 'bad';
+    const bg = s => s>=75?'good':s>=50?'mid':'bad';
     const score = (d,i) => {
       let s = 100,
           t = d.units==='imperial' ? (d.avg[i]-32)*5/9 : d.avg[i];
@@ -338,7 +349,7 @@
       s -= d.aqi[i]==='–' ? 15 : d.aqi[i]/4;
       s -= d.wind[i]/8;
       s -= Math.abs(d.hum[i]-50)/4;
-      return Math.max(1, Math.min(100, Math.round(s)));
+      return Math.max(1,Math.min(100,Math.round(s)));
     };
 
     menuBtn.onclick = () => {
@@ -357,12 +368,12 @@
       const wx = await fetch(
         `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}`+
         `&daily=temperature_2m_max,temperature_2m_min,relative_humidity_2m_mean,windspeed_10m_max`+
-        `&timezone=${coords.tz}`+
+        `&timezone=${coords tz}`+
         `&temperature_unit=${u==='imperial'?'fahrenheit':'celsius'}`+
         `&wind_speed_unit=${u==='imperial'?'mph':'kmh'}`
       ).then(r=>r.json());
       wx.units = u;
-      wx.avg = wx.daily.temperature_2m_max.map((m,i) => (m+wx.daily.temperature_2m_min[i])/2);
+      wx.avg = wx.daily.temperature_2m_max.map((m,i)=>(m+wx.daily.temperature_2m_min[i])/2);
 
       const aq = await fetch(
         `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${coords.lat}&longitude=${coords.lon}`+
@@ -372,31 +383,31 @@
       wx.aqi = Array(7).fill('–');
       if (aq.hourly?.time) {
         const mp = {};
-        aq.hourly.time.forEach((t,i) => {
-          const d = t.slice(0,10);
+        aq.hourly.time.forEach((t,i)=>{
+          const d=t.slice(0,10);
           (mp[d] ??= []).push(aq.hourly.us_aqi[i]);
         });
-        wx.daily.time.forEach((d,i) => {
+        wx.daily.time.forEach((d,i)=>{
           if (mp[d]) wx.aqi[i] = Math.max(...mp[d]);
         });
       }
 
       wx.wind = wx.daily.windspeed_10m_max;
-      wx.hum  = wx.daily.relative_humidity_2m_mean;
-      wx.score= wx.daily.time.map((_,i)=>score(wx,i));
+      wx.hum = wx.daily.relative_humidity_2m_mean;
+      wx.score = wx.daily.time.map((_,i)=>score(wx,i));
 
       data = wx;
       document.querySelector('header').textContent = `Weather 7 — ${city}`;
       renderCards();
     }
 
-    function renderCards(){
-      cards.innerHTML='';
+    function renderCards() {
+      cards.innerHTML = '';
       const d = data,
             suf = d.units==='imperial'?'°F':'°C';
       const today = new Date(); today.setHours(0,0,0,0);
 
-      d.daily.time.forEach((iso,i) => {
+      d.daily.time.forEach((iso,i)=>{
         const date = new Date(iso+'T00:00');
         if (date < today) return;
 
@@ -424,7 +435,7 @@
     }
 
     async function openDetail(idx) {
-      const d = data, u = d.units, suf = u==='imperial'?'°F':'°C', iso = d.daily.time[idx];
+      const d=data,u=d.units,suf=u==='imperial'?'°F':'°C',iso=d.daily.time[idx];
       detailDate.textContent = new Date(iso).toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
       chart?.destroy(); hoverOut.textContent='';
       let labels=[], temps=[];
@@ -437,19 +448,18 @@
         ).then(r=>r.json());
         if (h.hourly?.time) {
           labels = h.hourly.time.map(t=>t.slice(11,16));
-          temps  = h.hourly.temperature_2m;
+          temps = h.hourly.temperature_2m;
         }
       } catch {}
       chart = new Chart(chartCanvas,{
-        type: 'line',
+        type:'line',
         data:{ labels, datasets:[{ data:temps, tension:.35, borderWidth:3, pointRadius:0, borderColor:'#ff9100' }]},
         options:{ plugins:{ tooltip:{enabled:false}, legend:{display:false} }, interaction:{ intersect:false,mode:'nearest'}, animation:false }
       });
-      chartCanvas.onmousemove = chartCanvas.ontouchmove = e => {
+      chartCanvas.onmousemove = chartCanvas.ontouchmove = e=>{
         const pts = chart.getElementsAtEventForMode(e,'nearest',{intersect:false},false);
         if (pts.length) {
-          const j = pts[0].index;
-          hoverOut.textContent = `${labels[j]} • ${temps[j]}${suf}`;
+          hoverOut.textContent = `${labels[pts[0].index]} • ${temps[pts[0].index]}${suf}`;
         }
       };
       chartCanvas.onmouseleave = chartCanvas.ontouchend = ()=> hoverOut.textContent='';
@@ -460,9 +470,9 @@
       row('🌿','Pollen Count','1');
       row('💧','Humidity',`${Math.round(d.hum[idx])}%`);
       row('💨','Wind Speed',`${Math.round(d.wind[idx])} ${u==='imperial'?'mph':'km/h'}`);
-      detail.style.display = 'flex';
+      detail.style.display='flex';
     }
-    backBtn.onclick = e => { e.preventDefault(); detail.style.display='none'; };
+    backBtn.onclick = e=>{ e.preventDefault(); detail.style.display='none'; };
 
     let sCtrl;
     cityIn.oninput = async ()=> {
@@ -475,7 +485,7 @@
           `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=8`,
           { signal: sCtrl.signal }
         ).then(r=>r.json());
-        r.results?.forEach(l => {
+        r.results?.forEach(l=>{
           const li = document.createElement('li');
           li.textContent = `${l.name}${l.admin1?', '+l.admin1:''}, ${l.country}`;
           li.dataset.city = l.name;
@@ -484,7 +494,7 @@
         if (suggest.childElementCount) suggest.style.display='block';
       } catch {}
     };
-    suggest.onclick = e => {
+    suggest.onclick = e=> {
       if (e.target.tagName!=='LI') return;
       cityIn.value = e.target.dataset.city;
       suggest.style.display='none';
@@ -499,12 +509,12 @@
       loadCity(c, unitSel.value);
     };
 
-    // init
+    // initialize
     (()=> {
       const c = localStorage.getItem('city'),
             u = localStorage.getItem('units');
       if (c && u) loadCity(c,u);
-      else       setup.style.display='flex';
+      else setup.style.display='flex';
     })();
   </script>
 </body>
