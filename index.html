@@ -2,63 +2,78 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Weather 7 – Install</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Weather 7</title>
 
-  <!-- PWA plumbing shared by all platforms -->
-  <link rel="manifest" href="manifest.json">
+  <!-- PWA manifest & theming -->
+  <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#0a84ff">
 
-  <!-- iOS-specific “run like an app” flags -->
+  <!-- iOS web-app capable -->
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="Weather 7">
-  <link rel="apple-touch-icon" href="icons/icon-192.png"> <!-- 180×180 or larger recommended -->
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
 
-  <script>
-    /* service-worker */
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js');
-    }
-
-    /* jump straight to the app when already standalone */
-    function launch() { location.href = 'app.html'; }
-    function checkStandalone() {
-      if (window.matchMedia('(display-mode: standalone)').matches ||
-          window.navigator.standalone) { launch(); }
-    }
-    window.addEventListener('load', checkStandalone);
-
-    /* Android install-prompt UI */
-    let deferredPrompt;
-    window.addEventListener('beforeinstallprompt', e => {
-      e.preventDefault();
-      deferredPrompt = e;
-      installBtn.style.display = 'inline-block';
-    });
-    function doInstall() {
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.finally(() => deferredPrompt = null);
-      }
-    }
-  </script>
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 
   <style>
-    body{margin:0;height:100vh;display:flex;flex-direction:column;
-         justify-content:center;align-items:center;
-         font-family:system-ui,sans-serif;background:#0a84ff;color:#fff;text-align:center}
-    h1{font-size:1.8rem;margin-bottom:1rem}
-    button{padding:.75rem 1.4rem;font-size:1rem;border:none;border-radius:8px;
-           background:#fff;color:#0a84ff;margin:.4rem;cursor:pointer}
-    #installBtn{display:none}
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #e5ecf2;
+      text-align: center;
+    }
+    .glass {
+      background: rgba(255,255,255,.25);
+      backdrop-filter: blur(14px);
+      border-radius: 20px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.14);
+      padding: 2rem;
+      max-width: 320px;
+      width: 90vw;
+    }
+    h1 { margin-top: 0; }
+    button {
+      margin-top: 1.5rem;
+      padding: .8rem 1.2rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 9999px;
+      background: #0a84ff;
+      color: #fff;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
-  <h1>Add <em>Weather 7</em> to your Home Screen</h1>
-  <p>On iOS: tap <strong>Share › Add to Home Screen</strong>.<br>
-     On Android: tap <em>Install</em>.</p>
-  <button id="installBtn" onclick="doInstall()">Install</button>
-  <button onclick="launch()">Skip & open now</button>
+  <div class="glass">
+    <h1>Welcome to Weather 7</h1>
+    <p>Tap the browser menu and choose “Add to Home screen” to install the app.</p>
+    <p>Once installed, open it from your home screen for the full standalone experience.</p>
+    <button id="goApp">Go to App</button>
+  </div>
+
+  <script>
+    // Register the service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/service-worker.js')
+        .catch(err => console.error('SW registration failed:', err));
+    }
+
+    // If running as a PWA, immediately redirect to app.html
+    if (window.matchMedia('(display-mode: standalone)').matches
+      || window.navigator.standalone === true) {
+      location.href = '/app.html';
+    }
+
+    // Fallback “Go to App” button
+    document.getElementById('goApp').onclick = () => {
+      location.href = '/app.html';
+    };
+  </script>
 </body>
 </html>
