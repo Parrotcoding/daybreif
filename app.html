@@ -2,10 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Weather 7</title>
 
-<!-- iOS “app view” flags (must be on the launch page itself!) -->
+<!-- iOS PWA flags (must live on the launch page itself) -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Weather 7">
@@ -15,50 +16,47 @@
 :root{
   --accent:#0a84ff;
   --card-bg:#fff;
-  --card-text:#222;
-  --small-factor:.5;
+  --card-txt:#222;
+  --small:.5;
 }
-html,body{margin:0;height:100%;overscroll-behavior:none}
-body{font-family:system-ui,sans-serif;background:#f4f6fb;overflow:hidden;
-     display:flex;flex-direction:column}
+html,body{margin:0;height:100%;overflow:hidden;
+          font-family:system-ui,sans-serif;background:#f4f6fb}
+body{display:flex;flex-direction:column;touch-action:none}
 header{padding:1rem;text-align:center;font-weight:600;font-size:1.25rem;
        color:var(--accent)}
-#cards{flex:1 1 auto;overflow-y:auto;padding:0 0 3rem;
+#cards{flex:1 1 auto;overflow-y:auto;padding-bottom:3rem;
        display:flex;flex-direction:column;align-items:center;gap:1rem}
 
 /* cards */
-.weather-card{width:90vw;max-width:500px;background:var(--card-bg);color:var(--card-text);
+.weather-card{width:90vw;max-width:500px;background:var(--card-bg);color:var(--card-txt);
   border-radius:18px;box-shadow:0 6px 16px rgba(0,0,0,.08);
   padding:1rem 1.25rem;opacity:0;transform:translateY(30px);
-  animation:fadeSlide .6s ease forwards}
-.weather-card.small{scale:var(--small-factor);transform-origin:top center}
+  animation:fade .6s ease forwards}
+@keyframes fade{to{opacity:1;transform:none}}
+.weather-card.small{scale:var(--small);transform-origin:top center}
 .weather-card h2{margin:0 0 .25rem;font-size:1.1rem}
 .temps{font-size:1.5rem;display:flex;gap:1.25rem}
 .extra{margin-top:.5rem;display:flex;gap:1.25rem;font-size:.95rem}
-@keyframes fadeSlide{to{opacity:1;transform:translateY(0)}}
 
 /* first-run overlay */
-#setup{position:fixed;inset:0;background:rgba(0,0,0,.55);
-  display:flex;align-items:center;justify-content:center;z-index:10}
-#setup.hide{display:none}
-#setup>div{background:#fff;border-radius:12px;padding:2rem;width:90vw;max-width:420px;
-  box-shadow:0 6px 16px rgba(0,0,0,.25);text-align:center}
+#setup{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;
+  align-items:center;justify-content:center;z-index:10}
+#setup>div{background:#fff;border-radius:12px;padding:2rem;width:90vw;
+  max-width:420px;box-shadow:0 6px 16px rgba(0,0,0,.25);text-align:center}
 #setup label{display:block;margin:1rem 0 .25rem;font-weight:600}
 #setup input,#setup select,button{width:100%;padding:.75rem 1rem;font-size:1rem;
   border-radius:8px;border:1px solid #ccc}
 
-/* custom suggestion list */
+/* custom suggestion box */
 #sbox{position:relative}
 #suggest{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #ccc;
-  border-top:none;max-height:220px;overflow-y:auto;z-index:20;display:none}
+  border-top:none;max-height:220px;overflow-y:auto;display:none;z-index:20}
 #suggest li{padding:.6rem 1rem;cursor:pointer}
 #suggest li:hover{background:#eef4ff}
 
-/* buttons */
 button{background:var(--accent);color:#fff;border:none;cursor:pointer}
-button:disabled{opacity:.6;cursor:not-allowed}
+button:disabled{opacity:.6}
 
-/* settings shortcut */
 #menu-btn{position:fixed;top:1rem;right:1rem;background:#fff;border-radius:50%;
   width:44px;height:44px;display:flex;align-items:center;justify-content:center;
   box-shadow:0 4px 12px rgba(0,0,0,.12)}
@@ -67,15 +65,15 @@ button:disabled{opacity:.6;cursor:not-allowed}
 <body>
 <header id="title">Weather 7</header>
 <div id="cards"></div>
-<button id="menu-btn" aria-label="change location">⚙️</button>
+<button id="menu-btn" aria-label="settings">⚙️</button>
 
-<!-- first-run city/unit picker -->
+<!-- setup popup -->
 <section id="setup">
   <div>
     <h2>Choose your city</h2>
     <label>City</label>
     <div id="sbox">
-      <input id="cityInput" autocomplete="off" placeholder="e.g. New York">
+      <input id="cityInput" autocomplete="off" placeholder="e.g. Newark">
       <ul id="suggest"></ul>
     </div>
 
@@ -89,114 +87,125 @@ button:disabled{opacity:.6;cursor:not-allowed}
 </section>
 
 <script>
-/* DOM shortcuts */
-const cardsEl  = document.getElementById('cards');
-const setupEl  = document.getElementById('setup');
-const cityIn   = document.getElementById('cityInput');
-const unitSel  = document.getElementById('unitSelect');
-const saveBtn  = document.getElementById('saveBtn');
-const menuBtn  = document.getElementById('menu-btn');
-const titleEl  = document.getElementById('title');
-const suggest  = document.getElementById('suggest');
+/* elements */
+const cards   = document.getElementById('cards');
+const setup   = document.getElementById('setup');
+const cityIn  = document.getElementById('cityInput');
+const unitSel = document.getElementById('unitSelect');
+const saveBtn = document.getElementById('saveBtn');
+const menuBtn = document.getElementById('menu-btn');
+const titleEl = document.getElementById('title');
+const suggest = document.getElementById('suggest');
 
-/* launch if a city already stored */
-(function init(){
+/* enter fullscreen on first user tap (bypasses gesture requirement) */
+document.addEventListener('touchend', ()=> {
+  if (window.matchMedia('(display-mode: standalone)').matches &&
+      document.fullscreenEnabled && !document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(()=>{});
+  }
+},{once:true});
+
+/* load stored prefs */
+(() => {
   const city  = localStorage.getItem('city');
   const units = localStorage.getItem('units') || 'metric';
   if (city) { unitSel.value = units; fetchWeather(city, units); hideSetup(); }
 })();
 
-/* ---------- suggestion dropdown ---------- */
+/* suggestions */
 let aborter;
 cityIn.addEventListener('input', async ()=>{
   const q = cityIn.value.trim();
-  suggest.innerHTML = ''; suggest.style.display = 'none';
+  suggest.innerHTML=''; suggest.style.display='none';
   if (q.length<3) return;
+
   if (aborter) aborter.abort();
   aborter = new AbortController();
-
   try{
-    const url=`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=10`;
-    const res=await fetch(url,{signal:aborter.signal}).then(r=>r.json());
-    if(!res.results) return;
-    res.results.forEach(loc=>{
-      const li=document.createElement('li');
-      li.textContent=`${loc.name}${loc.admin1?', '+loc.admin1:''}, ${loc.country}`;
-      li.dataset.city=li.textContent;
+    const api=`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=10`;
+    const res = await fetch(api,{signal:aborter.signal}).then(r=>r.json());
+    res.results?.forEach(loc=>{
+      const li = document.createElement('li');
+      li.textContent =
+        `${loc.name}${loc.admin1?', '+loc.admin1:''}, ${loc.country}`;
+      li.dataset.city = loc.name;                   // <<< bare city only
       suggest.appendChild(li);
     });
     if (suggest.childElementCount) suggest.style.display='block';
   }catch{}
 });
 suggest.addEventListener('click',e=>{
-  if(e.target.tagName!=='LI') return;
-  cityIn.value=e.target.dataset.city;
+  if (e.target.tagName!=='LI') return;
+  cityIn.value = e.target.dataset.city;            // bare city stored
   suggest.style.display='none';
 });
 
-/* ---------- save & later settings ---------- */
-saveBtn.addEventListener('click', () => {
+/* save city */
+saveBtn.addEventListener('click', ()=>{
   const city = cityIn.value.trim();
-  if(!city) return;
+  if (!city) return;
   const units = unitSel.value;
   localStorage.setItem('city',city);
   localStorage.setItem('units',units);
-  fetchWeather(city,units);
   hideSetup();
+  fetchWeather(city,units);
 });
-menuBtn.addEventListener('click', () => { showSetup(); });
 
-function hideSetup(){ setupEl.classList.add('hide'); }
-function showSetup(){ setupEl.classList.remove('hide'); cardsEl.innerHTML=''; }
+/* reopen setup */
+menuBtn.addEventListener('click',()=>{
+  cards.innerHTML='';
+  showSetup();
+});
 
-/* ---------- fetch & render weather ---------- */
+/* helpers */
+function hideSetup(){ setup.style.display='none'; }
+function showSetup(){ setup.style.display='flex'; }
+
+/* get forecast */
 async function fetchWeather(city,units){
   titleEl.textContent=`Weather 7 – ${city}`;
   try{
-    const geo=await fetch(
+    const geo = await fetch(
       `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`
     ).then(r=>r.json());
-    if(!geo.results?.length) throw new Error('city not found');
+    if(!geo.results?.length) throw Error('city not found');
     const {latitude,longitude,timezone}=geo.results[0];
 
-    const tempUnit=units==='imperial'?'fahrenheit':'celsius';
-    const windUnit=units==='imperial'?'mph':'kmh';
-    const url=`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}`+
-              `&daily=temperature_2m_max,temperature_2m_min,relative_humidity_2m_mean,windspeed_10m_max`+
-              `&timezone=${timezone}&temperature_unit=${tempUnit}&wind_speed_unit=${windUnit}`;
-    const data=await fetch(url).then(r=>r.json());
-
+    const tempU = units==='imperial'?'fahrenheit':'celsius';
+    const windU = units==='imperial'?'mph':'kmh';
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}`+
+                `&daily=temperature_2m_max,temperature_2m_min,relative_humidity_2m_mean,windspeed_10m_max`+
+                `&timezone=${timezone}&temperature_unit=${tempU}&wind_speed_unit=${windU}`;
+    const data = await fetch(url).then(r=>r.json());
     renderCards(data,units);
   }catch(e){
     alert('Sorry – '+e.message);
   }
 }
+
+/* draw cards */
 function renderCards(d,units){
-  cardsEl.innerHTML='';
-  const suf=units==='imperial'?'°F':'°C';
+  cards.innerHTML='';
+  const suf = units==='imperial'?'°F':'°C';
   d.daily.time.slice(0,7).forEach((t,i)=>{
-    const card=document.createElement('div');
+    const card = document.createElement('div');
     card.className='weather-card'+(i?' small':'');
     card.style.animationDelay=(i*.08)+'s';
-    const nice=new Date(t).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+    const nice = new Date(t).toLocaleDateString(undefined,
+                 {weekday:'short',month:'short',day:'numeric'});
     card.innerHTML=`
       <h2>${nice}</h2>
       <div class="temps">
         <span>⬆ ${Math.round(d.daily.temperature_2m_max[i])}${suf}</span>
         <span>⬇ ${Math.round(d.daily.temperature_2m_min[i])}${suf}</span>
       </div>
-      ${i?'':`<div class="extra">
-          <span>💧 ${Math.round(d.daily.relative_humidity_2m_mean[i])}%</span>
-          <span>💨 ${Math.round(d.daily.windspeed_10m_max[i])}</span>
-        </div>`}`;
-    cardsEl.appendChild(card);
+      ${i?'':`
+      <div class="extra">
+        <span>💧 ${Math.round(d.daily.relative_humidity_2m_mean[i])}%</span>
+        <span>💨 ${Math.round(d.daily.windspeed_10m_max[i])}</span>
+      </div>`}`;
+    cards.appendChild(card);
   });
-}
-
-/* ---------- request full-screen when already standalone ---------- */
-if(window.matchMedia('(display-mode: standalone)').matches &&
-   document.fullscreenEnabled){
-  document.documentElement.requestFullscreen().catch(()=>{});
 }
 </script>
 </body>
