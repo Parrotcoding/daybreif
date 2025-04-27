@@ -7,40 +7,55 @@
 
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.gstatic.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
 <style>
-/* —— base styling (cards, overlay, modal) ——————————— */
-:root{--accent:#0a84ff;--bg:#f4f6fb;--card:#fff;--txt:#222;--small:.5}
+:root{--accent:#0a84ff;--bg:#f4f6fb;--card:#fff;--txt:#222}
 html,body{margin:0;height:100%;overflow:hidden;font-family:'Inter',system-ui,sans-serif;background:var(--bg)}
 body{display:flex;flex-direction:column;touch-action:none}
+
 header{padding:1rem 1.2rem;text-align:center;font-weight:600;font-size:1.25rem;color:var(--accent)}
-#cards{flex:1 1 auto;overflow-y:auto;padding-bottom:3rem;display:flex;flex-direction:column;align-items:center;gap:1.2rem}
-.weather-card{width:90vw;max-width:500px;background:var(--card);color:var(--txt);border-radius:18px;box-shadow:0 6px 16px rgba(0,0,0,.08);padding:1rem 1.25rem;cursor:pointer;opacity:0;transform:translateY(30px);animation:fade .6s forwards}
+#cards{flex:1 1 auto;overflow-y:auto;padding-bottom:3rem;display:flex;flex-direction:column;align-items:center;gap:1.4rem}
+
+/* cards */
+.weather-card{width:90vw;max-width:320px;background:var(--card);color:var(--txt);border-radius:18px;box-shadow:0 6px 16px rgba(0,0,0,.08);padding:1rem 1.25rem;cursor:pointer;opacity:0;transform:translateY(30px);animation:fade .6s forwards;display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto 1fr;row-gap:.5rem}
+@media(min-width:550px){.weather-card{max-width:500px}}
 @keyframes fade{to{opacity:1;transform:none}}
-.weather-card.small{scale:var(--small);transform-origin:top}
-.weather-card h2{margin:0 0 .3rem;font-size:1.05rem}
+.first{height:220px} .other{height:110px}
+.score{align-self:start;justify-self:end;background:#ededed;border-radius:14px;padding:.2rem .65rem;font-weight:600;font-size:.85rem}
+.weather-card h2{margin:0;font-size:1.05rem;grid-column:1/3}
 .temps{font-size:1.4rem;display:flex;gap:1.2rem}
-.extra{margin-top:.6rem;display:flex;gap:1rem;font-size:.9rem}
+.extra{font-size:.9rem;display:flex;gap:1rem}
 .aqi{font-weight:600}
-/* setup, suggestion, modal styles unchanged */
+
+/* setup overlay */
 #setup{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:10}
 #setup>div{background:#fff;border-radius:12px;padding:2rem;width:90vw;max-width:420px;box-shadow:0 6px 16px rgba(0,0,0,.25);text-align:center}
 #setup label{display:block;margin:1rem 0 .25rem;font-weight:600}
 #setup input,#setup select,button{width:100%;padding:.75rem 1rem;font-size:1rem;border-radius:8px;border:1px solid #ccc}
-#sbox{position:relative} #suggest{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #ccc;border-top:none;max-height:220px;overflow-y:auto;display:none;z-index:20}
-#suggest li{padding:.6rem 1rem;cursor:pointer} #suggest li:hover{background:#eef4ff}
-button{background:var(--accent);color:#fff;border:none;cursor:pointer} button:disabled{opacity:.6}
+
+#sbox{position:relative}
+#suggest{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #ccc;border-top:none;max-height:220px;overflow-y:auto;display:none;z-index:20}
+#suggest li{padding:.6rem 1rem;cursor:pointer}
+#suggest li:hover{background:#eef4ff}
+
+/* buttons */
+button{background:var(--accent);color:#fff;border:none;cursor:pointer}
+button:disabled{opacity:.6}
 #menu-btn{position:fixed;top:1rem;right:1rem;background:#fff;border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.12)}
+
+/* modal */
 #modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:30}
 #modalBox{background:#fff;border-radius:14px;max-width:600px;width:92vw;padding:1.6rem 1.4rem;box-shadow:0 8px 18px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:1.2rem}
 #modalBox h3{margin:0;text-align:center;font-size:1.35rem}
-canvas{width:100%;height:320px} @media (min-width:600px){canvas{height:420px}}
-.hoverReadout{margin-top:.4rem;text-align:center;font-size:.9rem;color:#666}
+canvas{width:100%;height:400px}
+@media(min-width:650px){canvas{height:550px}}
+.hover{margin-top:.4rem;text-align:center;font-size:.95rem;font-weight:600;color:#666}
 #details{display:flex;gap:1.3rem;justify-content:center;font-size:.95rem;flex-wrap:wrap}
-#details span{white-space:nowrap}
+#details span{white-space:nowrap;margin:.15rem 0}
 </style>
 </head>
 <body>
@@ -48,46 +63,48 @@ canvas{width:100%;height:320px} @media (min-width:600px){canvas{height:420px}}
 <div id="cards"></div>
 <button id="menu-btn" aria-label="settings">⚙️</button>
 
-<!-- setup overlay -->
-<section id="setup">
-  <div>
-    <h2>Select location</h2>
-    <label>City</label>
-    <div id="sbox"><input id="cityInput" autocomplete="off"><ul id="suggest"></ul></div>
-    <label>Units</label>
-    <select id="unitSelect"><option value="metric">Celsius / km h</option><option value="imperial">Fahrenheit / mph</option></select>
-    <button id="saveBtn">Save & continue</button>
-  </div>
-</section>
+<section id="setup"><div>
+  <h2>Select location</h2>
+  <label>City</label><div id="sbox"><input id="cityInput" autocomplete="off"><ul id="suggest"></ul></div>
+  <label>Units</label><select id="unitSelect"><option value="metric">Celsius / km h</option><option value="imperial">Fahrenheit / mph</option></select>
+  <button id="saveBtn">Save & continue</button>
+</div></section>
 
 <!-- modal -->
-<div id="modal">
-  <div id="modalBox">
-    <h3 id="modalTitle"></h3>
-    <canvas id="chart"></canvas>
-    <p id="hoverInfo" class="hoverReadout"></p>
-    <div id="details"></div>
-    <button onclick="closeModal()">Close</button>
-  </div>
-</div>
+<div id="modal"><div id="modalBox">
+  <h3 id="modalTitle"></h3>
+  <canvas id="chart"></canvas>
+  <div id="hoverOut" class="hover"></div>
+  <div id="details"></div>
+  <button onclick="closeModal()">Close</button>
+</div></div>
 
 <script>
-/* refs */
-const cards=document.getElementById('cards'),setup=document.getElementById('setup'),
-      cityIn=document.getElementById('cityInput'),unitSel=document.getElementById('unitSelect'),
-      saveBtn=document.getElementById('saveBtn'),menuBtn=document.getElementById('menu-btn'),
-      titleEl=document.getElementById('title'),suggest=document.getElementById('suggest'),
-      modal=document.getElementById('modal'),modalTitle=document.getElementById('modalTitle'),
-      details=document.getElementById('details'),chartCanvas=document.getElementById('chart'),
-      hoverInfo=document.getElementById('hoverInfo');
+/* ---------- refs ---------- */
+const cards   = document.getElementById('cards');
+const setup   = document.getElementById('setup');
+const cityIn  = document.getElementById('cityInput');
+const unitSel = document.getElementById('unitSelect');
+const saveBtn = document.getElementById('saveBtn');
+const menuBtn = document.getElementById('menu-btn');
+const titleEl = document.getElementById('title');
+const suggest = document.getElementById('suggest');
+const modal   = document.getElementById('modal');
+const modalTitle=document.getElementById('modalTitle');
+const details = document.getElementById('details');
+const chartCanvas=document.getElementById('chart');
+const hoverOut=document.getElementById('hoverOut');
 
 let masterData,coords,lastChart;
 
-/* — full-screen once — */
+/* full-screen once */
 document.addEventListener('touchend',()=>{if(window.matchMedia('(display-mode: standalone)').matches&&document.fullscreenEnabled&&!document.fullscreenElement){document.documentElement.requestFullscreen().catch(()=>{});}}, {once:true});
 
 /* restore prefs */
-(()=>{const c=localStorage.getItem('city'),u=localStorage.getItem('units')||'metric';if(c){unitSel.value=u;fetchWeather(c,u);setup.style.display='none';}})();
+(()=>{
+  const c=localStorage.getItem('city'),u=localStorage.getItem('units')||'metric';
+  if(c){unitSel.value=u;fetchWeather(c,u);setup.style.display='none';}
+})();
 
 /* suggestions */
 let aborter;
@@ -96,20 +113,25 @@ cityIn.addEventListener('input',async()=>{
   suggest.innerHTML='';suggest.style.display='none';
   if(q.length<3)return;
   if(aborter)aborter.abort();aborter=new AbortController();
-  try{const res=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=8`,{signal:aborter.signal}).then(r=>r.json());
-      res.results?.forEach(loc=>{const li=document.createElement('li');li.textContent=`${loc.name}${loc.admin1?', '+loc.admin1:''}, ${loc.country}`;li.dataset.city=loc.name;suggest.appendChild(li);});
-      if(suggest.childElementCount)suggest.style.display='block';
+  try{
+    const res=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=8`,{signal:aborter.signal}).then(r=>r.json());
+    res.results?.forEach(loc=>{
+      const li=document.createElement('li');
+      li.textContent=`${loc.name}${loc.admin1?', '+loc.admin1:''}, ${loc.country}`;li.dataset.city=loc.name;
+      suggest.appendChild(li);
+    });
+    if(suggest.childElementCount) suggest.style.display='block';
   }catch{}
 });
 suggest.addEventListener('click',e=>{if(e.target.tagName!=='LI')return;cityIn.value=e.target.dataset.city;suggest.style.display='none';});
 
-/* save prefs */
+/* save */
 saveBtn.addEventListener('click',()=>{const c=cityIn.value.trim();if(!c)return;
-  const u=unitSel.value;localStorage.setItem('city',c);localStorage.setItem('units',u);
-  setup.style.display='none';fetchWeather(c,u);});
+  localStorage.setItem('city',c);localStorage.setItem('units',unitSel.value);
+  setup.style.display='none';fetchWeather(c,unitSel.value);});
 menuBtn.addEventListener('click',()=>{cards.innerHTML='';setup.style.display='flex';});
 
-/* fetch 7-day + AQI */
+/* ---------- fetch 7-day + AQI ---------- */
 async function fetchWeather(city,units){
   titleEl.textContent=`Weather 7 — ${city}`;
   try{
@@ -120,6 +142,10 @@ async function fetchWeather(city,units){
     const tU=units==='imperial'?'fahrenheit':'celsius',wU=units==='imperial'?'mph':'kmh';
     const wx=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,relative_humidity_2m_mean,windspeed_10m_max&timezone=${timezone}&temperature_unit=${tU}&wind_speed_unit=${wU}`).then(r=>r.json());
 
+    /* calc daily mean temp */
+    wx.daily.temp_avg=wx.daily.temperature_2m_max.map((max,i)=> (max+wx.daily.temperature_2m_min[i])/2);
+
+    /* hourly AQI -> daily max */
     const start=wx.daily.time[0],end=wx.daily.time[6];
     const aq=await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}&hourly=us_aqi&start=${start}T00:00&end=${end}T23:00&timezone=${timezone}`).then(r=>r.json()).catch(()=>({}));
     const maxAqi=Array(7).fill('–');
@@ -127,25 +153,52 @@ async function fetchWeather(city,units){
       const bucket={};aq.hourly.time.forEach((t,i)=>{const d=t.slice(0,10);(bucket[d]??=[]).push(aq.hourly.us_aqi[i]);});
       wx.daily.time.forEach((d,i)=>{const arr=bucket[d];if(arr)maxAqi[i]=Math.max(...arr);});
     }
-    wx.aqiMax=maxAqi;wx.units=units;masterData=wx;
+    wx.aqiMax=maxAqi;
+    wx.dayScore=wx.daily.time.map((_,i)=>scoreDay(wx,i));
+    wx.units=units;masterData=wx;
     renderCards();
-  }catch(e){alert('Sorry — '+e.message);}
+  }catch(e){alert(e.message);}
+}
+/* scoring algo */
+function scoreDay(d,i){
+  let s=100;
+  const tempIdeal=22,humIdeal=50;
+  s-=Math.abs(d.daily.temp_avg[i]-tempIdeal)*2;
+  s-=d.aqiMax[i]==='–'?20:d.aqiMax[i]/2;
+  s-=d.daily.windspeed_10m_max[i]/5;
+  s-=Math.abs(d.daily.relative_humidity_2m_mean[i]-humIdeal)/2;
+  return Math.max(1,Math.min(100,Math.round(s)));
 }
 
-/* cards */
+/* ---------- render cards ---------- */
 function renderCards(){
   cards.innerHTML='';
-  const d=masterData;if(!d)return;const suf=d.units==='imperial'?'°F':'°C';
+  const d=masterData;if(!d)return;
+  const suf=d.units==='imperial'?'°F':'°C';
   const today=new Date();today.setHours(0,0,0,0);
-  d.daily.time.map((t,i)=>({date:new Date(t),i})).filter(o=>o.date>=today).slice(0,7).forEach((o,idx)=>{
-    const i=o.i,c=document.createElement('div');c.className='weather-card'+(idx?' small':'');c.style.animationDelay=(idx*.08)+'s';
-    const nice=o.date.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
-    c.innerHTML=`<h2>${nice}</h2><div class="temps"><span>⬆ ${Math.round(d.daily.temperature_2m_max[i])}${suf}</span><span>⬇ ${Math.round(d.daily.temperature_2m_min[i])}${suf}</span></div><div class="extra">${idx?'':`<span>💧 ${Math.round(d.daily.relative_humidity_2m_mean[i])}%</span><span>💨 ${Math.round(d.daily.windspeed_10m_max[i])}</span>`}<span class="aqi">🗺 AQI ${d.aqiMax[i]}</span></div>`;
-    c.addEventListener('click',()=>openDetail(i));cards.appendChild(c);
-  });
+
+  d.daily.time.map((t,i)=>({date:new Date(t),i}))
+    .filter(o=>o.date>=today).slice(0,7)
+    .forEach((o,idx)=>{
+      const i=o.i,c=document.createElement('div');
+      c.className='weather-card '+(idx?'other':'first');
+      c.style.animationDelay=(idx*.08)+'s';
+
+      const nice=o.date.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+      c.innerHTML=`
+        <h2>${nice}</h2>
+        <div class="score">${d.dayScore[i]}</div>
+        <div class="temps"><span>⬆ ${Math.round(d.daily.temperature_2m_max[i])}${suf}</span><span>⬇ ${Math.round(d.daily.temperature_2m_min[i])}${suf}</span></div>
+        <div class="extra ${idx?'hide':''}">
+           <span>💧 ${Math.round(d.daily.relative_humidity_2m_mean[i])}%</span>
+           <span>💨 ${Math.round(d.daily.windspeed_10m_max[i])}</span>
+        </div>`;
+      c.addEventListener('click',()=>openDetail(i));
+      cards.appendChild(c);
+    });
 }
 
-/* modal with hover-info */
+/* ---------- modal ---------- */
 async function openDetail(dayIdx){
   if(lastChart){lastChart.destroy();lastChart=null;}
   const d=masterData,u=d.units,suf=u==='imperial'?'°F':'°C',dateISO=d.daily.time[dayIdx];
@@ -156,30 +209,38 @@ async function openDetail(dayIdx){
     const h=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&hourly=temperature_2m&start_date=${dateISO}&end_date=${dateISO}&timezone=${coords.tz}&temperature_unit=${u==='imperial'?'fahrenheit':'celsius'}`).then(r=>r.json());
     if(h.hourly?.time){labels=h.hourly.time.map(t=>t.slice(11,16));temps=h.hourly.temperature_2m;}
   }catch{}
-  hoverInfo.textContent='';
-  chartCanvas.getContext('2d').clearRect(0,0,chartCanvas.width,chartCanvas.height);
-  if(labels.length){
-    lastChart=new Chart(chartCanvas,{type:'line',
-      data:{labels,datasets:[{data:temps,tension:.35,borderWidth:3,borderJoinStyle:'round',pointRadius:0,borderColor:'#ff9100'}]},
-      options:{responsive:true,plugins:{legend:{display:false},tooltip:{enabled:false}},animation:false,interaction:{intersect:false,mode:'nearest'}}});
 
-    const updateHover=e=>{
-      const rect=chartCanvas.getBoundingClientRect(),x=e.touches?e.touches[0].clientX:e.clientX;
-      const xPos=x-rect.left;
-      const idx=Math.min(Math.max(Math.round((xPos/rect.width)*(labels.length-1)),0),labels.length-1);
-      hoverInfo.textContent=`${labels[idx]} : ${temps[idx]} ${suf}`;
+  chartCanvas.getContext('2d').clearRect(0,0,chartCanvas.width,chartCanvas.height);
+  hoverOut.textContent='';
+  if(labels.length){
+    lastChart=new Chart(chartCanvas,{
+      type:'line',
+      data:{labels,datasets:[{data:temps,tension:.35,borderWidth:3,borderJoinStyle:'round',pointRadius:0,borderColor:'#ff9100'}]},
+      options:{responsive:true,plugins:{legend:{display:false},tooltip:{enabled:false}},animation:false,interaction:{intersect:false,mode:'nearest'}}
+    });
+
+    const showVal=e=>{
+      const rect=chartCanvas.getBoundingClientRect();
+      const x=(e.touches?e.touches[0].clientX:e.clientX)-rect.left;
+      const idx=Math.min(Math.max(Math.round((x/rect.width)*(labels.length-1)),0),labels.length-1);
+      hoverOut.textContent=`${labels[idx]}  •  ${temps[idx]}${suf}`;
     };
-    chartCanvas.onmousemove=updateHover;
-    chartCanvas.ontouchmove=updateHover;
-    chartCanvas.onmouseleave=()=>hoverInfo.textContent='';
-    chartCanvas.ontouchend=()=>hoverInfo.textContent='';
+    chartCanvas.onmousemove=showVal;
+    chartCanvas.ontouchmove=showVal;
+    chartCanvas.onmouseleave=()=>hoverOut.textContent='';
+    chartCanvas.ontouchend=()=>hoverOut.textContent='';
   }else{
-    chartCanvas.height=20;chartCanvas.parentElement.insertAdjacentHTML('beforeend','<p style="text-align:center;font-size:.9rem;color:#666;">Hourly data unavailable.</p>');
+    chartCanvas.height=20;hoverOut.textContent='No hourly data';
   }
-  details.innerHTML=`<span>Max: ${Math.round(d.daily.temperature_2m_max[dayIdx])}${suf}</span><span>Min: ${Math.round(d.daily.temperature_2m_min[dayIdx])}${suf}</span><span>Humidity: ${Math.round(d.daily.relative_humidity_2m_mean[dayIdx])}%</span><span>Wind: ${Math.round(d.daily.windspeed_10m_max[dayIdx])}</span><span>AQI: ${d.aqiMax[dayIdx]}</span>`;
-  modalTitle.textContent=nice;modal.style.display='flex';
+
+  details.innerHTML=`<span><strong>Score :</strong> ${d.dayScore[dayIdx]}</span>
+                     <span><strong>Humidity:</strong> ${Math.round(d.daily.relative_humidity_2m_mean[dayIdx])}%</span>
+                     <span><strong>Wind:</strong> ${Math.round(d.daily.windspeed_10m_max[dayIdx])} ${u==='imperial'?'mph':'km/h'}</span>
+                     <span><strong>AQI:</strong> ${d.aqiMax[dayIdx]}</span>`;
+  modalTitle.textContent=nice;
+  modal.style.display='flex';
 }
-function closeModal(){modal.style.display='none';chartCanvas.onmousemove=chartCanvas.ontouchmove=null;hoverInfo.textContent='';if(lastChart){lastChart.destroy();lastChart=null;}}
+function closeModal(){modal.style.display='none';chartCanvas.onmousemove=chartCanvas.ontouchmove=null;hoverOut.textContent='';if(lastChart){lastChart.destroy();lastChart=null;}}
 modal.addEventListener('click',e=>{if(e.target===modal)closeModal();});
 </script>
 </body>
