@@ -9,7 +9,7 @@
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#0a84ff">
 
-  <!-- iOS meta -->
+  <!-- iOS standalone support -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
 
@@ -18,10 +18,12 @@
 
   <style>
     body {
-      margin: 0; height: 100vh;
+      margin: 0;
+      height: 100vh;
       display: flex; align-items: center; justify-content: center;
       font-family: 'Inter', system-ui, sans-serif;
-      background: #e5ecf2; text-align: center;
+      background: #e5ecf2;
+      text-align: center;
     }
     .glass {
       background: rgba(255,255,255,.25);
@@ -29,19 +31,31 @@
       border-radius: 20px;
       box-shadow: 0 8px 24px rgba(0,0,0,.14);
       padding: 2rem;
-      max-width: 320px; width: 90vw;
+      max-width: 320px;
+      width: 90vw;
     }
     button {
-      margin-top: 1.5rem; padding: .8rem 1.2rem;
-      font-size: 1rem; border: none; border-radius: 9999px;
-      background: #0a84ff; color: #fff; cursor: pointer;
+      margin: 0.5rem;
+      padding: .8rem 1.2rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 9999px;
+      background: #0a84ff;
+      color: #fff;
+      cursor: pointer;
     }
     #installBtn {
       display: none;
-      position: fixed; bottom: 1rem; right: 1rem;
-      padding: 1rem; border-radius: 9999px;
-      background: #0a84ff; color: #fff; border: none;
-      cursor: pointer; z-index: 1000;
+      position: fixed;
+      bottom: 1rem;
+      right: 1rem;
+      padding: 1rem;
+      border-radius: 9999px;
+      background: #0a84ff;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      z-index: 1000;
     }
   </style>
 </head>
@@ -51,34 +65,39 @@
     <p>Tap the menu ⋮ and choose “Add to Home screen” or use the button below.</p>
     <button id="goApp">Go to App</button>
   </div>
-  <button id="installBtn">Install App</button>
+
+  <!-- Install button -->
+  <button id="installBtn">⬇️ Install</button>
 
   <script>
-    // Register the SW
+    // Register Service Worker
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/service-worker.js')
         .catch(err => console.error('SW registration failed:', err));
     }
 
-    // Redirect if already installed (standalone)
+    // Redirect to app.html if already installed
     if (window.matchMedia('(display-mode: standalone)').matches ||
         window.navigator.standalone === true) {
       location.href = '/app.html';
     }
 
-    // Manual “Go to App”
+    // "Go to App" button
     document.getElementById('goApp').onclick = () => {
       location.href = '/app.html';
     };
 
-    // Capture the install prompt
+    // Handle the PWA install prompt
     let deferredPrompt;
     const installBtn = document.getElementById('installBtn');
+
     window.addEventListener('beforeinstallprompt', (e) => {
+      // Prevent the default mini-infobar
       e.preventDefault();
       deferredPrompt = e;
       installBtn.style.display = 'block';
     });
+
     installBtn.addEventListener('click', async () => {
       installBtn.style.display = 'none';
       if (!deferredPrompt) return;
