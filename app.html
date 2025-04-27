@@ -37,6 +37,9 @@
     html, body {
       margin: 0;
       height: 100%;
+      /* safe-area insets for iOS notch & home indicator */
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
       overflow: hidden;
       font-family: 'Inter', system-ui, sans-serif;
       background: var(--bg);
@@ -151,7 +154,7 @@
       width: 100%;
       height: 650px;
     }
-    @media(min-width:650px){
+    @media(min-width:650px) {
       canvas { height: 800px; }
     }
     .hoverOut {
@@ -249,7 +252,8 @@
 
     #menu-btn {
       position: fixed;
-      top: 1rem; right: 1rem;
+      top: calc(env(safe-area-inset-top) + 1rem);
+      right: 1rem;
       background: var(--glass);
       backdrop-filter: var(--blur);
       border-radius: 50%;
@@ -266,7 +270,7 @@
   <div id="cards"></div>
   <button id="menu-btn">⚙️</button>
 
-  <!-- detail -->
+  <!-- detail view -->
   <section id="detailPage">
     <div class="detailNav"><a href="#" id="backBtn">← Back</a></div>
     <h1 class="detailDate" id="detailDate"></h1>
@@ -277,7 +281,7 @@
     <div class="facts" id="factsBox"></div>
   </section>
 
-  <!-- location setup -->
+  <!-- location modal -->
   <section id="setup">
     <div>
       <h2>Select location</h2>
@@ -301,6 +305,7 @@
       navigator.serviceWorker.register('/service-worker.js').catch(()=>{});
     }
 
+    // DOM refs
     const cards = document.getElementById('cards'),
           setup = document.getElementById('setup'),
           cityIn = document.getElementById('cityInput'),
@@ -310,26 +315,30 @@
           detail = document.getElementById('detailPage'),
           hoverOut = document.getElementById('hoverOut'),
           detailDate = document.getElementById('detailDate'),
-          factsBox = document.getElementById('factsBox'),
-          chartCanvas = document.getElementById('detailChart'),
-          backBtn = document.getElementById('backBtn'),
-          menuBtn = document.getElementById('menu-btn');
+          factsBox   = document.getElementById('factsBox'),
+          chartCanvas= document.getElementById('detailChart'),
+          backBtn    = document.getElementById('backBtn'),
+          menuBtn    = document.getElementById('menu-btn');
 
     let data, coords, chart;
 
     async function geo(c) {
-      const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(c)}&count=1`).then(r=>r.json());
+      const r = await fetch(
+        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(c)}&count=1`
+      ).then(r=>r.json());
       if (!r.results?.length) throw Error('city');
       return r.results[0];
     }
-    const bg = s => s>=75?'good':s>=50?'mid':'bad';
+
+    const bg = s => s>=75 ? 'good' : s>=50 ? 'mid' : 'bad';
     const score = (d,i) => {
-      let s=100, t=d.units==='imperial'?(d.avg[i]-32)*5/9:d.avg[i];
-      s-=Math.abs(t-22);
-      s-=d.aqi[i]==='–'?15:d.aqi[i]/4;
-      s-=d.wind[i]/8;
-      s-=Math.abs(d.hum[i]-50)/4;
-      return Math.max(1,Math.min(100,Math.round(s)));
+      let s = 100,
+          t = d.units==='imperial' ? (d.avg[i]-32)*5/9 : d.avg[i];
+      s -= Math.abs(t-22);
+      s -= d.aqi[i]==='–' ? 15 : d.aqi[i]/4;
+      s -= d.wind[i]/8;
+      s -= Math.abs(d.hum[i]-50)/4;
+      return Math.max(1, Math.min(100, Math.round(s)));
     };
 
     menuBtn.onclick = () => {
@@ -342,7 +351,7 @@
       if (e.target===setup) setup.style.display='none';
     };
 
-    async function loadCity(city,u){
+    async function loadCity(city,u) {
       const g = await geo(city);
       coords = { lat:g.latitude, lon:g.longitude, tz:g.timezone };
       const wx = await fetch(
@@ -353,7 +362,7 @@
         `&wind_speed_unit=${u==='imperial'?'mph':'kmh'}`
       ).then(r=>r.json());
       wx.units = u;
-      wx.avg   = wx.daily.temperature_2m_max.map((m,i)=>(m+wx.daily.temperature_2m_min[i])/2);
+      wx.avg = wx.daily.temperature_2m_max.map((m,i) => (m+wx.daily.temperature_2m_min[i])/2);
 
       const aq = await fetch(
         `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${coords.lat}&longitude=${coords.lon}`+
@@ -363,18 +372,18 @@
       wx.aqi = Array(7).fill('–');
       if (aq.hourly?.time) {
         const mp = {};
-        aq.hourly.time.forEach((t,i)=>{
+        aq.hourly.time.forEach((t,i) => {
           const d = t.slice(0,10);
           (mp[d] ??= []).push(aq.hourly.us_aqi[i]);
         });
-        wx.daily.time.forEach((d,i)=>{
+        wx.daily.time.forEach((d,i) => {
           if (mp[d]) wx.aqi[i] = Math.max(...mp[d]);
         });
       }
 
-      wx.wind  = wx.daily.windspeed_10m_max;
-      wx.hum   = wx.daily.relative_humidity_2m_mean;
-      wx.score = wx.daily.time.map((_,i)=>score(wx,i));
+      wx.wind = wx.daily.windspeed_10m_max;
+      wx.hum  = wx.daily.relative_humidity_2m_mean;
+      wx.score= wx.daily.time.map((_,i)=>score(wx,i));
 
       data = wx;
       document.querySelector('header').textContent = `Weather 7 — ${city}`;
@@ -387,7 +396,7 @@
             suf = d.units==='imperial'?'°F':'°C';
       const today = new Date(); today.setHours(0,0,0,0);
 
-      d.daily.time.forEach((iso,i)=>{
+      d.daily.time.forEach((iso,i) => {
         const date = new Date(iso+'T00:00');
         if (date < today) return;
 
@@ -395,7 +404,7 @@
         const card = document.createElement('div');
         card.className = `weather-card ${bg(d.score[i])} ${isFirst?'first':'other'}`;
         card.innerHTML = `
-          <h2>${ isFirst ? 'Today' : date.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}) }</h2>
+          <h2>${isFirst?'Today':date.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})}</h2>
           <div class="score">${d.score[i]}</div>
           <div class="data">
             <div class="temps">
@@ -409,21 +418,17 @@
             </div>
           </div>`;
         if (!isFirst) card.querySelector('.extra').style.display='none';
-        card.onclick = ()=> openDetail(i);
+        card.onclick = ()=>openDetail(i);
         cards.appendChild(card);
       });
     }
 
-    async function openDetail(idx){
-      const d=data, u=d.units, suf=u==='imperial'?'°F':'°C',
-            iso=d.daily.time[idx];
-      document.getElementById('detailDate').textContent =
-        new Date(iso).toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
-      chart?.destroy();
-      hoverOut.textContent='';
-
+    async function openDetail(idx) {
+      const d = data, u = d.units, suf = u==='imperial'?'°F':'°C', iso = d.daily.time[idx];
+      detailDate.textContent = new Date(iso).toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
+      chart?.destroy(); hoverOut.textContent='';
       let labels=[], temps=[];
-      try{
+      try {
         const h = await fetch(
           `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}`+
           `&hourly=temperature_2m&start_date=${iso}&end_date=${iso}`+
@@ -434,15 +439,13 @@
           labels = h.hourly.time.map(t=>t.slice(11,16));
           temps  = h.hourly.temperature_2m;
         }
-      }catch{}
-
+      } catch {}
       chart = new Chart(chartCanvas,{
         type: 'line',
         data:{ labels, datasets:[{ data:temps, tension:.35, borderWidth:3, pointRadius:0, borderColor:'#ff9100' }]},
-        options:{ plugins:{ tooltip:{enabled:false}, legend:{display:false} }, interaction:{ intersect:false, mode:'nearest' }, animation:false }
+        options:{ plugins:{ tooltip:{enabled:false}, legend:{display:false} }, interaction:{ intersect:false,mode:'nearest'}, animation:false }
       });
-
-      chartCanvas.onmousemove = chartCanvas.ontouchmove = e=>{
+      chartCanvas.onmousemove = chartCanvas.ontouchmove = e => {
         const pts = chart.getElementsAtEventForMode(e,'nearest',{intersect:false},false);
         if (pts.length) {
           const j = pts[0].index;
@@ -450,55 +453,58 @@
         }
       };
       chartCanvas.onmouseleave = chartCanvas.ontouchend = ()=> hoverOut.textContent='';
-
-      factsBox.innerHTML = '';
-      const row = (ic,l,v)=> factsBox.insertAdjacentHTML('beforeend',
+      factsBox.innerHTML='';
+      const row = (ic,l,v)=>factsBox.insertAdjacentHTML('beforeend',
         `<div class="factRow"><span><span class="icon">${ic}</span>${l}</span><span class="val">${v}</span></div>`);
       row('🗺','Air Quality Index',d.aqi[idx]);
       row('🌿','Pollen Count','1');
       row('💧','Humidity',`${Math.round(d.hum[idx])}%`);
       row('💨','Wind Speed',`${Math.round(d.wind[idx])} ${u==='imperial'?'mph':'km/h'}`);
-      detail.style.display='flex';
+      detail.style.display = 'flex';
     }
-    backBtn.onclick = e=>{ e.preventDefault(); detail.style.display='none'; };
+    backBtn.onclick = e => { e.preventDefault(); detail.style.display='none'; };
 
     let sCtrl;
-    cityIn.oninput=async()=>{
+    cityIn.oninput = async ()=> {
       const q = cityIn.value.trim();
       suggest.innerHTML=''; suggest.style.display='none';
       if (q.length<3) return;
       sCtrl?.abort(); sCtrl = new AbortController();
-      try{
-        const r=await fetch(
+      try {
+        const r = await fetch(
           `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=8`,
           { signal: sCtrl.signal }
         ).then(r=>r.json());
-        r.results?.forEach(l=>{
-          const li=document.createElement('li');
-          li.textContent=`${l.name}${l.admin1?', '+l.admin1:''}, ${l.country}`;
-          li.dataset.city=l.name;
+        r.results?.forEach(l => {
+          const li = document.createElement('li');
+          li.textContent = `${l.name}${l.admin1?', '+l.admin1:''}, ${l.country}`;
+          li.dataset.city = l.name;
           suggest.appendChild(li);
         });
         if (suggest.childElementCount) suggest.style.display='block';
-      }catch{}
+      } catch {}
     };
-    suggest.onclick = e=>{ if(e.target.tagName!=='LI') return; cityIn.value = e.target.dataset.city; suggest.style.display='none'; };
+    suggest.onclick = e => {
+      if (e.target.tagName!=='LI') return;
+      cityIn.value = e.target.dataset.city;
+      suggest.style.display='none';
+    };
 
-    saveBtn.onclick = ()=>{
+    saveBtn.onclick = ()=> {
       const c = cityIn.value.trim();
       if (!c) return;
       localStorage.setItem('city', c);
       localStorage.setItem('units', unitSel.value);
       setup.style.display='none';
-      loadCity(c,unitSel.value);
+      loadCity(c, unitSel.value);
     };
 
-    // auto-load or show setup
+    // init
     (()=> {
       const c = localStorage.getItem('city'),
             u = localStorage.getItem('units');
       if (c && u) loadCity(c,u);
-      else        setup.style.display='flex';
+      else       setup.style.display='flex';
     })();
   </script>
 </body>
