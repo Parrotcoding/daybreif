@@ -1,11 +1,13 @@
-<!DOCTYPE html><html lang="en"><head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Weather 7</title>
 
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
 <style>
@@ -61,8 +63,11 @@ button:disabled{opacity:.6}
 #menu-btn{position:fixed;top:1rem;right:1rem;width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:1.05rem}
 .weather-card,.facts,#setup>div,#suggest,.detailShell,.detailNav,#menu-btn{background:var(--glass-bg);backdrop-filter:var(--glass-blur);border-radius:var(--glass-rad);box-shadow:var(--glass-shad)}
 </style>
-</head><body>
-<header><div class="glass" id="headerTitle">Weather 7</div></header>
+</head>
+<body>
+<header>
+  <div class="glass" id="headerTitle">Weather 7</div>
+</header>
 
 <div id="cards"></div>
 <button id="menu-btn" class="glass">⚙️</button>
@@ -71,91 +76,138 @@ button:disabled{opacity:.6}
   <div class="detailShell glass">
     <div class="detailNav glass"><a href="#" id="backBtn">← Back</a></div>
     <h1 class="detailDate" id="detailDate"></h1>
-    <div style="padding:0 1rem"><canvas id="detailChart"></canvas><div class="hoverOut" id="hoverOut"></div></div>
+    <div style="padding:0 1rem">
+      <canvas id="detailChart"></canvas>
+      <div class="hoverOut" id="hoverOut"></div>
+    </div>
     <div class="facts glass" id="factsBox"></div>
   </div>
 </section>
 
-<section id="setup"><div class="glass">
-  <h2>Select location</h2>
-  <label>City</label><div id="sbox"><input id="cityInput" autocomplete="off"><ul id="suggest"></ul></div>
-  <label>Units</label><select id="unitSelect"><option value="metric">Celsius / km h</option><option value="imperial">Fahrenheit / mph</option></select>
-  <button id="saveBtn">Save & continue</button>
-</div></section>
+<section id="setup">
+  <div class="glass">
+    <h2>Select location</h2>
+    <label>City</label>
+    <div id="sbox">
+      <input id="cityInput" autocomplete="off">
+      <ul id="suggest"></ul>
+    </div>
+    <label>Units</label>
+    <select id="unitSelect">
+      <option value="metric">Celsius / km h</option>
+      <option value="imperial">Fahrenheit / mph</option>
+    </select>
+    <button id="saveBtn">Save & continue</button>
+  </div>
+</section>
 
 <script>
-/// small helper to fix “yesterday” bug:
+// helper: parse "YYYY-MM-DD" as local date
 function localDate(iso){ const [y,m,d]=iso.split('-').map(Number); return new Date(y,m-1,d); }
 
-const cards=document.getElementById('cards'),setup=document.getElementById('setup'),
-      cityIn=document.getElementById('cityInput'),unitSel=document.getElementById('unitSelect'),
-      saveBtn=document.getElementById('saveBtn'),suggest=document.getElementById('suggest'),
-      titleEl=document.getElementById('headerTitle'),detail=document.getElementById('detailPage'),
-      hoverOut=document.getElementById('hoverOut'),detailDate=document.getElementById('detailDate'),
-      factsBox=document.getElementById('factsBox'),chartCanvas=document.getElementById('detailChart'),
-      backBtn=document.getElementById('backBtn'),menuBtn=document.getElementById('menu-btn');
+const cards=document.getElementById('cards'),
+      setup=document.getElementById('setup'),
+      cityIn=document.getElementById('cityInput'),
+      unitSel=document.getElementById('unitSelect'),
+      saveBtn=document.getElementById('saveBtn'),
+      suggest=document.getElementById('suggest'),
+      titleEl=document.getElementById('headerTitle'),
+      detail=document.getElementById('detailPage'),
+      hoverOut=document.getElementById('hoverOut'),
+      detailDate=document.getElementById('detailDate'),
+      factsBox=document.getElementById('factsBox'),
+      chartCanvas=document.getElementById('detailChart'),
+      backBtn=document.getElementById('backBtn'),
+      menuBtn=document.getElementById('menu-btn');
 
-let data,coords,chart;
+let data, coords, chart;
 
 async function geo(c){
-  const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(c)}&count=1`).then(r=>r.json());
+  const r = await fetch(
+    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(c)}&count=1`
+  ).then(r=>r.json());
   if(!r.results?.length) throw Error('city');
   return r.results[0];
 }
-const bg=s=>s>=75?'good':s>=50?'mid':'bad';
-const score=(d,i)=>{ let s=100,t=d.units==='imperial'?(d.avg[i]-32)*5/9:d.avg[i];
-  s-=Math.abs(t-22);s-=d.aqi[i]==='–'?15:d.aqi[i]/4;s-=d.wind[i]/8;s-=Math.abs(d.hum[i]-50)/4;
-  return Math.max(1,Math.min(100,Math.round(s))); };
+const tint = s => s>=75?'good':s>=50?'mid':'bad';
+const score = (d,i) => {
+  let s=100,
+      t=d.units==='imperial'?(d.avg[i]-32)*5/9:d.avg[i];
+  s -= Math.abs(t-22);
+  s -= d.aqi[i]==='–'?15:d.aqi[i]/4;
+  s -= d.wind[i]/8;
+  s -= Math.abs(d.hum[i]-50)/4;
+  return Math.max(1,Math.min(100,Math.round(s)));
+};
 
-menuBtn.onclick=()=>{ cityIn.value=localStorage.getItem('city')||''; unitSel.value=localStorage.getItem('units')||'metric'; suggest.style.display='none'; setup.style.display='flex'; };
-setup.onclick=e=>{ if(e.target===setup) setup.style.display='none'; };
+menuBtn.onclick = ()=>{
+  cityIn.value = localStorage.getItem('city')||'';
+  unitSel.value = localStorage.getItem('units')||'metric';
+  suggest.style.display='none';
+  setup.style.display='flex';
+};
+setup.onclick = e=>{
+  if(e.target===setup) setup.style.display='none';
+};
 
-// load city
 async function loadCity(city,u){
-  const g=await geo(city); coords={lat:g.latitude,lon:g.longitude,tz:g.timezone};
-  const wx=await fetch(
+  const g = await geo(city);
+  coords = { lat:g.latitude, lon:g.longitude, tz:g.timezone };
+  const wx = await fetch(
     `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}`+
     `&daily=temperature_2m_max,temperature_2m_min,relative_humidity_2m_mean,windspeed_10m_max`+
-    `&timezone=${coords.tz}&temperature_unit=${u==='imperial'?'fahrenheit':'celsius'}`+
+    `&timezone=${coords.tz}`+
+    `&temperature_unit=${u==='imperial'?'fahrenheit':'celsius'}`+
     `&wind_speed_unit=${u==='imperial'?'mph':'kmh'}`
   ).then(r=>r.json());
   wx.units=u;
-  wx.avg=wx.daily.temperature_2m_max.map((m,i)=>(m+wx.daily.temperature_2m_min[i])/2);
+  wx.avg = wx.daily.temperature_2m_max.map((m,i)=>(m+wx.daily.temperature_2m_min[i])/2);
 
-  const aq=await fetch(
+  const aq = await fetch(
     `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${coords.lat}&longitude=${coords.lon}`+
     `&hourly=us_aqi&timezone=${coords.tz}`+
     `&start=${wx.daily.time[0]}T00:00&end=${wx.daily.time[6]}T23:00`
   ).then(r=>r.json()).catch(()=>({}));
-  wx.aqi=Array(7).fill('–');
+  wx.aqi = Array(7).fill('–');
   if(aq.hourly?.time){
-    const map={};
-    aq.hourly.time.forEach((t,i)=>{ const d=t.slice(0,10); (map[d]??=[]).push(aq.hourly.us_aqi[i]); });
-    wx.daily.time.forEach((d,i)=>{ const arr=map[d]; if(arr) wx.aqi[i]=Math.max(...arr); });
+    const mp={};
+    aq.hourly.time.forEach((t,i)=>{
+      const d = t.slice(0,10);
+      (mp[d]??=[]).push(aq.hourly.us_aqi[i]);
+    });
+    wx.daily.time.forEach((d,i)=>{
+      const arr=mp[d];
+      if(arr) wx.aqi[i] = Math.max(...arr);
+    });
   }
 
-  wx.wind=wx.daily.windspeed_10m_max;
-  wx.hum=wx.daily.relative_humidity_2m_mean;
-  wx.score=wx.daily.time.map((_,i)=>score(wx,i));
+  wx.wind = wx.daily.windspeed_10m_max;
+  wx.hum  = wx.daily.relative_humidity_2m_mean;
+  wx.score = wx.daily.time.map((_,i)=>score(wx,i));
   data=wx;
-  titleEl.textContent=`Weather 7 — ${city}`;
+  titleEl.textContent = `Weather 7 — ${city}`;
   renderCards();
 }
 
-// render cards
 function renderCards(){
   cards.innerHTML='';
-  const d=data, suf=d.units==='imperial'?'°F':'°C';
-  const today=localDate(new Date().toISOString().slice(0,10));
+  const d=data,
+        suf=d.units==='imperial'?'°F':'°C',
+        today=localDate(new Date().toISOString().slice(0,10));
 
   d.daily.time.forEach((iso,i)=>{
-    const date=localDate(iso);              // fixed
+    const date=localDate(iso);
     if(date<today) return;
 
+    const isFirst = cards.childElementCount===0;
+    const label = isFirst
+      ? 'Today'
+      : date.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+
     const card=document.createElement('div');
-    card.className=`weather-card glass ${bg(d.score[i])} ${cards.childElementCount?'other':'first'}`;
+    card.className=`weather-card glass ${tint(d.score[i])} ${isFirst?'first':'other'}`;
     card.innerHTML=`
-      <h2>${date.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})}</h2>
+      <h2>${label}</h2>
       <div class="score">${d.score[i]}</div>
       <div class="data">
         <div class="temps">
@@ -168,16 +220,15 @@ function renderCards(){
           <span>🗺 AQI ${d.aqi[i]}</span>
         </div>
       </div>`;
-    if(cards.childElementCount) card.querySelector('.extra').style.display='none';
-    card.onclick=()=>openDetail(i);
+    if(!isFirst) card.querySelector('.extra').style.display='none';
+    card.onclick = ()=>openDetail(i);
     cards.appendChild(card);
   });
 }
 
-// detail view
 async function openDetail(idx){
-  const d=data,u=d.units,suf=u==='imperial'?'°F':'°C',iso=d.daily.time[idx];
-  detailDate.textContent=localDate(iso)                                   // fixed
+  const d=data, u=d.units, suf=u==='imperial'?'°F':'°C', iso=d.daily.time[idx];
+  detailDate.textContent = localDate(iso)
     .toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
   chart?.destroy(); hoverOut.textContent='';
   let labels=[],temps=[];
@@ -185,7 +236,8 @@ async function openDetail(idx){
     const h=await fetch(
       `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}`+
       `&hourly=temperature_2m&start_date=${iso}&end_date=${iso}`+
-      `&timezone=${coords.tz}&temperature_unit=${u==='imperial'?'fahrenheit':'celsius'}`
+      `&timezone=${coords.tz}`+
+      `&temperature_unit=${u==='imperial'?'fahrenheit':'celsius'}`
     ).then(r=>r.json());
     if(h.hourly?.time){ labels=h.hourly.time.map(t=>t.slice(11,16)); temps=h.hourly.temperature_2m; }
   }catch{}
@@ -206,14 +258,16 @@ async function openDetail(idx){
 }
 backBtn.onclick=e=>{e.preventDefault();detail.style.display='none';};
 
-// suggestions
 let sCtrl;
 cityIn.oninput=async()=>{
   const q=cityIn.value.trim(); suggest.innerHTML=''; suggest.style.display='none';
   if(q.length<3) return;
   sCtrl?.abort(); sCtrl=new AbortController();
   try{
-    const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=8`,{signal:sCtrl.signal}).then(r=>r.json());
+    const r=await fetch(
+      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=8`,
+      {signal:sCtrl.signal}
+    ).then(r=>r.json());
     r.results?.forEach(l=>{
       const li=document.createElement('li');
       li.textContent=`${l.name}${l.admin1?', '+l.admin1:''}, ${l.country}`;
@@ -222,9 +276,11 @@ cityIn.oninput=async()=>{
     if(suggest.childElementCount) suggest.style.display='block';
   }catch{}
 };
-suggest.onclick=e=>{if(e.target.tagName!=='LI') return; cityIn.value=e.target.dataset.city; suggest.style.display='none';};
+suggest.onclick=e=>{
+  if(e.target.tagName!=='LI') return;
+  cityIn.value=e.target.dataset.city; suggest.style.display='none';
+};
 
-// save and continue
 saveBtn.onclick=()=>{
   const c=cityIn.value.trim(); if(!c) return;
   localStorage.setItem('city',c);
@@ -233,10 +289,9 @@ saveBtn.onclick=()=>{
   loadCity(c,unitSel.value);
 };
 
-// on load: either prompt or auto-load
 (()=>{
-  const c = localStorage.getItem('city'),
-        u = localStorage.getItem('units');
+  const c=localStorage.getItem('city'),
+        u=localStorage.getItem('units');
   if(c && u) {
     loadCity(c,u);
   } else {
@@ -244,4 +299,5 @@ saveBtn.onclick=()=>{
   }
 })();
 </script>
-</body></html>
+</body>
+</html>
