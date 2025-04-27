@@ -9,9 +9,14 @@
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#0a84ff">
 
-  <!-- iOS standalone -->
+  <!-- iOS standalone support -->
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Weather 7">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-192.png">
+  <link rel="apple-touch-icon" sizes="120x120" href="/icons/icon-192.png">
+  <link rel="apple-touch-icon" sizes="76x76"   href="/icons/icon-192.png">
 
   <!-- Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
@@ -53,7 +58,15 @@
     <button id="goApp" style="display:none">Go to App</button>
   </div>
 
+  <button id="installBtn">⬇️ Install</button>
+
   <script>
+    // Register SW
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/service-worker.js')
+        .catch(err => console.error('SW registration failed:', err));
+    }
+
     const ua = navigator.userAgent || '';
     const isAndroid = /Android/i.test(ua);
     const isIOS = /iPhone|iPad|iPod/.test(ua) && !window.MSStream;
@@ -62,13 +75,15 @@
     const content = document.getElementById('content');
     const msg     = document.getElementById('message');
     const goApp   = document.getElementById('goApp');
+    const installBtn = document.getElementById('installBtn');
+    let deferredPrompt;
 
+    // Android → PWA shell
     if (isAndroid) {
-      // Android: go straight into the PWA shell
-      window.location.href = '/app.html';
+      location.href = '/app.html';
     }
+    // iOS → A2HS instructions
     else if (isIOS) {
-      // iOS Safari: instruct A2HS
       msg.innerHTML = `
         To install on iOS:<br>
         1. Tap the ⬆︎ share icon<br>
@@ -76,20 +91,33 @@
         3. Open from your Home Screen
       `;
     }
+    // macOS Safari → Add to Dock instructions
     else if (isMacSafari) {
-      // macOS Safari: instruct Add to Dock
       msg.innerHTML = `
         To install on macOS Safari:<br>
-        1. Click “File” → “Add to Dock…”<br>
-        2. Or click the share icon and choose “Add to Dock”<br>
+        1. In the menu bar, choose File → Add to Dock…<br>
+        2. Or click the share icon and select “Add to Dock”<br>
         3. Launch from your Dock for standalone mode
       `;
     }
+    // Others → show Go to App and Install button
     else {
-      // Other browsers: show Go to App button
       msg.textContent = 'Click below to open the full app experience.';
       goApp.style.display = 'inline-block';
-      goApp.onclick = () => { window.location.href = '/app.html'; };
+      goApp.onclick = () => location.href = '/app.html';
+
+      window.addEventListener('beforeinstallprompt', e => {
+        e.preventDefault();
+        deferredPrompt = e;
+        installBtn.style.display = 'block';
+      });
+      installBtn.addEventListener('click', async () => {
+        installBtn.style.display = 'none';
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        await deferredPrompt.userChoice;
+        deferredPrompt = null;
+      });
     }
   </script>
 </body>
