@@ -1,7 +1,7 @@
 {
   "name": "Weather 7",
   "short_name": "Weather7",
-  "start_url": "/index.html",
+  "start_url": "/app.html",     <-- change here
   "scope": "/",
   "display": "standalone",
   "background_color": "#e5ecf2",
