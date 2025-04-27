@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Weather 7 – Install</title>
+
+  <!-- PWA plumbing -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0a84ff">
+  <script>
+    /* service-worker */
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js');
+    }
+
+    /* detect standalone → jump straight in */
+    function launch() { location.href = 'app.html'; }
+    function checkStandalone() {
+      if (window.matchMedia('(display-mode: standalone)').matches ||
+          window.navigator.standalone) { launch(); }
+    }
+    window.addEventListener('load', checkStandalone);
+
+    /* Android install-prompt UI */
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault();
+      deferredPrompt = e;
+      installBtn.style.display = 'inline-block';
+    });
+    function doInstall() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.finally(() => deferredPrompt = null);
+      }
+    }
+  </script>
+
+  <style>
+    body{margin:0;height:100vh;display:flex;flex-direction:column;
+         justify-content:center;align-items:center;
+         font-family:system-ui,sans-serif;background:#0a84ff;color:#fff;text-align:center}
+    h1{font-size:1.8rem;margin-bottom:1rem}
+    button{padding:.75rem 1.4rem;font-size:1rem;border:none;border-radius:8px;
+           background:#fff;color:#0a84ff;margin:.4rem;cursor:pointer}
+    #installBtn{display:none}
+  </style>
+</head>
+<body>
+  <h1>Add <em>Weather 7</em> to your home screen</h1>
+  <p>On iOS → tap <strong>Share › Add to Home Screen</strong>.<br>
+     On Android → just hit <em>Install</em>.</p>
+  <button id="installBtn" onclick="doInstall()">Install</button>
+  <button onclick="launch()">Skip & open now</button>
+</body>
+</html>
