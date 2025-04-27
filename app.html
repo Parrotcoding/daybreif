@@ -6,68 +6,63 @@
       content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Weather 7</title>
 
-<!-- PWA flags -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable"      content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title"   content="Weather 7">
+<!-- modern PWA flags -->
+<meta name="mobile-web-app-capable" content="yes">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 
-<!-- Chart.js -->
+<!-- Chart.js for graphs -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
-<style>/* ——--- same CSS as before, trimmed for brevity ---—— */</style>
+<style>
+/* ---- styling unchanged; truncated for brevity ---- */
+:root{--accent:#0a84ff;--card-bg:#fff;--card-txt:#222;--small:.5}
+html,body{margin:0;height:100%;overflow:hidden;font-family:system-ui,sans-serif;background:#f4f6fb}
+body{display:flex;flex-direction:column;touch-action:none}
+header{padding:1rem;text-align:center;font-weight:600;font-size:1.25rem;color:var(--accent)}
+#cards{flex:1 1 auto;overflow-y:auto;padding-bottom:3rem;display:flex;flex-direction:column;align-items:center;gap:1rem}
+.weather-card{width:90vw;max-width:500px;background:var(--card-bg);color:var(--card-txt);border-radius:18px;box-shadow:0 6px 16px rgba(0,0,0,.08);padding:1rem 1.25rem;opacity:0;transform:translateY(30px);animation:fade .6s ease forwards;cursor:pointer}
+@keyframes fade{to{opacity:1;transform:none}}
+.weather-card.small{scale:var(--small);transform-origin:top center}
+.weather-card h2{margin:0 0 .25rem;font-size:1.1rem}
+.temps{font-size:1.5rem;display:flex;gap:1.25rem}
+.extra{margin-top:.5rem;display:flex;gap:1.25rem;font-size:.95rem}
+.aqi{font-weight:600}
+/* setup & modal styles unchanged … */
+</style>
 </head>
 <body>
-<!-- header, cards list, setup panel, modal (unchanged markup) -->
 <header id="title">Weather 7</header>
 <div id="cards"></div>
 <button id="menu-btn" aria-label="settings">⚙️</button>
 
-<!-- setup popup -->
-<section id="setup"> …<!-- unchanged -->… </section>
+<!-- setup overlay -->
+<section id="setup"> …<!-- same markup as before -->… </section>
 
 <!-- detail modal -->
-<div id="modal"> …<!-- unchanged -->… </div>
+<div id="modal"> …<!-- same markup as before -->… </div>
 
 <script>
-/* ------------ DOM refs & state (same) ------------ */
-const cards   = document.getElementById('cards');
-const setup   = document.getElementById('setup');
-const cityIn  = document.getElementById('cityInput');
-const unitSel = document.getElementById('unitSelect');
-const saveBtn = document.getElementById('saveBtn');
-const menuBtn = document.getElementById('menu-btn');
-const titleEl = document.getElementById('title');
-const suggest = document.getElementById('suggest');
-const modal   = document.getElementById('modal');
-const modalTitle = document.getElementById('modalTitle');
-const details = document.getElementById('details');
-const chartCanvas = document.getElementById('chart');
+/* -------- DOM refs & state -------- */
+const cards=document.getElementById('cards'),setup=document.getElementById('setup'),
+      cityIn=document.getElementById('cityInput'),unitSel=document.getElementById('unitSelect'),
+      saveBtn=document.getElementById('saveBtn'),menuBtn=document.getElementById('menu-btn'),
+      titleEl=document.getElementById('title'),suggest=document.getElementById('suggest'),
+      modal=document.getElementById('modal'),modalTitle=document.getElementById('modalTitle'),
+      details=document.getElementById('details'),chartCanvas=document.getElementById('chart');
 
-let masterData=null;      // daily wx + aqi
-let coords=null;          // {lat,lon,tz}
-let lastChart=null;
+let masterData=null,coords=null,lastChart=null;
 
-/* ------------ fullscreen once 1st tap ------------ */
-document.addEventListener('touchend',()=>{
-  if(window.matchMedia('(display-mode: standalone)').matches &&
-     document.fullscreenEnabled && !document.fullscreenElement){
-    document.documentElement.requestFullscreen().catch(()=>{});
-  }
-},{once:true});
+/* ----- fullscreen on first tap ----- */
+document.addEventListener('touchend',()=>{if(window.matchMedia('(display-mode: standalone)').matches&&document.fullscreenEnabled&&!document.fullscreenElement){document.documentElement.requestFullscreen().catch(()=>{});}}, {once:true});
 
-/* ------------ restore prefs ------------ */
-(()=>{
-  const c=localStorage.getItem('city');
-  const u=localStorage.getItem('units')||'metric';
-  if(c){unitSel.value=u;fetchWeather(c,u);setup.style.display='none';}
-})();
+/* ----- restore prefs ----- */
+(()=>{const c=localStorage.getItem('city'),u=localStorage.getItem('units')||'metric';if(c){unitSel.value=u;fetchWeather(c,u);setup.style.display='none';}})();
 
-/* ------------ suggestion box (unchanged) ------------ */
+/* ----- suggestion dropdown (unchanged) ----- */
 let aborter;
-cityIn.addEventListener('input',async()=>{
-  const q=cityIn.value.trim();suggest.innerHTML='';suggest.style.display='none';
+cityIn.addEventListener('input', async ()=>{
+  const q=cityIn.value.trim();
+  suggest.innerHTML='';suggest.style.display='none';
   if(q.length<3)return;
   if(aborter)aborter.abort();aborter=new AbortController();
   try{
@@ -81,88 +76,67 @@ cityIn.addEventListener('input',async()=>{
     if(suggest.childElementCount)suggest.style.display='block';
   }catch{}
 });
-suggest.addEventListener('click',e=>{
-  if(e.target.tagName!=='LI')return;
-  cityIn.value=e.target.dataset.city;suggest.style.display='none';
-});
+suggest.addEventListener('click',e=>{if(e.target.tagName!=='LI')return;cityIn.value=e.target.dataset.city;suggest.style.display='none';});
 
-/* ------------ save prefs ------------ */
-saveBtn.addEventListener('click',()=>{
-  const c=cityIn.value.trim();if(!c)return;
-  const u=unitSel.value;
-  localStorage.setItem('city',c);localStorage.setItem('units',u);
-  setup.style.display='none';fetchWeather(c,u);
-});
+/* ----- save prefs ----- */
+saveBtn.addEventListener('click',()=>{const c=cityIn.value.trim();if(!c)return;
+  const u=unitSel.value;localStorage.setItem('city',c);localStorage.setItem('units',u);
+  setup.style.display='none';fetchWeather(c,u);});
 menuBtn.addEventListener('click',()=>{cards.innerHTML='';setup.style.display='flex';});
 
-/* -------------------------------------------------- */
-/*  MAIN: fetch 7-day weather + daily AQI             */
-/* -------------------------------------------------- */
+/* ===================================================== */
+/*  FETCH 7-DAY WEATHER  +  COMPUTE DAILY AQI MAXIMA     */
+/* ===================================================== */
 async function fetchWeather(city,units){
   titleEl.textContent=`Weather 7 – ${city}`;
   try{
-    /* 1️⃣ geocode */
-    const geo=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`).then(r=>r.json());
-    if(!geo.results?.length)throw Error('city not found');
-    const {latitude,longitude,timezone}=geo.results[0];
+    /* geocode */
+    const g=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`).then(r=>r.json());
+    if(!g.results?.length)throw Error('city not found');
+    const {latitude,longitude,timezone}=g.results[0];
     coords={lat:latitude,lon:longitude,tz:timezone};
 
-    /* 2️⃣ daily weather ( NO AQI here ) */
-    const tempU=units==='imperial'?'fahrenheit':'celsius';
-    const windU=units==='imperial'?'mph':'kmh';
+    /* daily weather (no AQI) */
+    const tempU=units==='imperial'?'fahrenheit':'celsius',windU=units==='imperial'?'mph':'kmh';
     const wxURL=`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}`+
                 `&daily=temperature_2m_max,temperature_2m_min,relative_humidity_2m_mean,windspeed_10m_max`+
                 `&timezone=${timezone}&temperature_unit=${tempU}&wind_speed_unit=${windU}`;
     const wx=await fetch(wxURL).then(r=>r.json());
 
-    /* 3️⃣ hourly AQI, then compute daily maxima */
-    const start=wx.daily.time[0];                           // today
-    const end  =wx.daily.time[6];                           // +6 days
+    /* hourly AQI → daily maxima */
+    const start=wx.daily.time[0],end=wx.daily.time[6];
     const aqURL=`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}`+
                 `&hourly=us_aqi&start=${start}T00:00&end=${end}T23:00&timezone=${timezone}`;
-    const aqData=await fetch(aqURL).then(r=>r.json()).catch(()=>({}));
+    const aq=await fetch(aqURL).then(r=>r.json()).catch(()=>({}));
 
     const aqiMax=Array(7).fill('–');
-    if(aqData.hourly?.time){
-      const mapDay={};                                     // dateISO→array
-      aqData.hourly.time.forEach((t,idx)=>{
-        const day=t.slice(0,10);
-        (mapDay[day]??=([])).push(aqData.hourly.us_aqi[idx]);
-      });
-      wx.daily.time.slice(0,7).forEach((dStr,i)=>{
-        const arr=mapDay[dStr];
-        if(arr) aqiMax[i]=Math.max(...arr);
-      });
+    if(aq.hourly?.time){
+      const map={};aq.hourly.time.forEach((t,i)=>{const d=t.slice(0,10);(map[d]??=[]).push(aq.hourly.us_aqi[i]);});
+      wx.daily.time.slice(0,7).forEach((dStr,i)=>{const arr=map[dStr];if(arr)aqiMax[i]=Math.max(...arr);});
     }
-    wx.aqiMax=aqiMax; wx.units=units;
-    masterData=wx;
+    wx.aqiMax=aqiMax;wx.units=units;masterData=wx;
     renderCards();
   }catch(err){alert('Sorry – '+err.message);}
 }
 
-/* ------------ build card list ------------ */
+/* -------- render card list -------- */
 function renderCards(){
   cards.innerHTML='';
   const d=masterData;if(!d)return;
-  const suf=d.units==='imperial'?'°F':'°C';
-  const today0=new Date();today0.setHours(0,0,0,0);
+  const suf=d.units==='imperial'?'°F':'°C',today=new Date();today.setHours(0,0,0,0);
 
   d.daily.time.map((t,i)=>({date:new Date(t),i}))
-    .filter(o=>o.date>=today0).slice(0,7)
+    .filter(o=>o.date>=today).slice(0,7)
     .forEach((o,idx)=>{
-      const i=o.i;
-      const card=document.createElement('div');
+      const i=o.i,card=document.createElement('div');
       card.className='weather-card'+(idx?' small':'');
       card.style.animationDelay=(idx*.08)+'s';
       card.dataset.index=i;
-
       const nice=o.date.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
       card.innerHTML=`
         <h2>${nice}</h2>
-        <div class="temps">
-          <span>⬆ ${Math.round(d.daily.temperature_2m_max[i])}${suf}</span>
-          <span>⬇ ${Math.round(d.daily.temperature_2m_min[i])}${suf}</span>
-        </div>
+        <div class="temps"><span>⬆ ${Math.round(d.daily.temperature_2m_max[i])}${suf}</span>
+                           <span>⬇ ${Math.round(d.daily.temperature_2m_min[i])}${suf}</span></div>
         <div class="extra">
           ${idx?'':`<span>💧 ${Math.round(d.daily.relative_humidity_2m_mean[i])}%</span>
                      <span>💨 ${Math.round(d.daily.windspeed_10m_max[i])}</span>`}
@@ -173,48 +147,36 @@ function renderCards(){
     });
 }
 
-/* ------------ detail modal ------------ */
+/* -------- modal detail view -------- */
 async function openDetail(dayIdx){
   if(lastChart){lastChart.destroy();lastChart=null;}
-  const d=masterData,u=d.units,suf=u==='imperial'?'°F':'°C';
-  const dateISO=d.daily.time[dayIdx];
+  const d=masterData,u=d.units,suf=u==='imperial'?'°F':'°C',dateISO=d.daily.time[dayIdx];
   const nice=new Date(dateISO).toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
 
   /* hourly temps */
   let labels=[],temps=[];
   try{
-    const hourURL=`https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}`+
-                  `&hourly=temperature_2m,relativehumidity_2m,windspeed_10m`+
-                  `&start_date=${dateISO}&end_date=${dateISO}&timezone=${coords.tz}`+
-                  `&temperature_unit=${u==='imperial'?'fahrenheit':'celsius'}&wind_speed_unit=${u==='imperial'?'mph':'kmh'}`;
-    const hr=await fetch(hourURL).then(r=>r.json());
-    if(hr.hourly?.time?.length){
-      labels=hr.hourly.time.map(t=>t.slice(11,16));
-      temps =hr.hourly.temperature_2m;
-    }
+    const hURL=`https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}`+
+               `&hourly=temperature_2m,relativehumidity_2m,windspeed_10m&start_date=${dateISO}&end_date=${dateISO}`+
+               `&timezone=${coords.tz}&temperature_unit=${u==='imperial'?'fahrenheit':'celsius'}&wind_speed_unit=${u==='imperial'?'mph':'kmh'}`;
+    const h=await fetch(hURL).then(r=>r.json());
+    if(h.hourly?.time?.length){labels=h.hourly.time.map(t=>t.slice(11,16));temps=h.hourly.temperature_2m;}
   }catch{}
 
   chartCanvas.getContext('2d').clearRect(0,0,chartCanvas.width,chartCanvas.height);
   if(labels.length){
-    lastChart=new Chart(chartCanvas,{
-      type:'line',
-      data:{labels,datasets:[{label:`Temp (${suf})`,data:temps,tension:.3}]},
-      options:{responsive:true,plugins:{tooltip:{mode:'nearest'}}}
-    });
+    lastChart=new Chart(chartCanvas,{type:'line',data:{labels,datasets:[{label:`Temp (${suf})`,data:temps,tension:.3}]},options:{responsive:true,plugins:{tooltip:{mode:'nearest'}}}});
   }else{
     chartCanvas.height=20;
-    chartCanvas.parentElement.insertAdjacentHTML('beforeend',
-      '<p style="text-align:center;font-size:.9rem;color:#666;">Hourly data unavailable.</p>');
+    chartCanvas.parentElement.insertAdjacentHTML('beforeend','<p style="text-align:center;font-size:.9rem;color:#666;">Hourly data unavailable.</p>');
   }
 
-  details.innerHTML=`
-    <span>Max: ${Math.round(d.daily.temperature_2m_max[dayIdx])}${suf}</span>
-    <span>Min: ${Math.round(d.daily.temperature_2m_min[dayIdx])}${suf}</span>
-    <span>Humidity: ${Math.round(d.daily.relative_humidity_2m_mean[dayIdx])}%</span>
-    <span>Wind: ${Math.round(d.daily.windspeed_10m_max[dayIdx])}</span>
-    <span>AQI: ${d.aqiMax[dayIdx]}</span>`;
-  modalTitle.textContent=nice;
-  modal.style.display='flex';
+  details.innerHTML=`<span>Max: ${Math.round(d.daily.temperature_2m_max[dayIdx])}${suf}</span>
+                     <span>Min: ${Math.round(d.daily.temperature_2m_min[dayIdx])}${suf}</span>
+                     <span>Humidity: ${Math.round(d.daily.relative_humidity_2m_mean[dayIdx])}%</span>
+                     <span>Wind: ${Math.round(d.daily.windspeed_10m_max[dayIdx])}</span>
+                     <span>AQI: ${d.aqiMax[dayIdx]}</span>`;
+  modalTitle.textContent=nice;modal.style.display='flex';
 }
 function closeModal(){modal.style.display='none';if(lastChart){lastChart.destroy();lastChart=null;}}
 modal.addEventListener('click',e=>{if(e.target===modal)closeModal();});
