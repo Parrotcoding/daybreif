@@ -5,7 +5,8 @@
 
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
 <style>
@@ -14,11 +15,10 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:'Inter',system-ui,san
 body{display:flex;flex-direction:column;touch-action:none}
 header{padding:1rem;text-align:center;font-weight:600;font-size:1.25rem;color:#0a84ff}
 #cards{flex:1 1 auto;overflow-y:auto;padding-bottom:4rem;display:flex;flex-direction:column;align-items:center;gap:1.3rem}
-
-/* card shell */
+/* cards */
 .weather-card{width:90vw;max-width:320px;border-radius:18px;box-shadow:0 6px 16px rgba(0,0,0,.07);
-  display:grid;grid-template-columns:1fr 70px;row-gap:.45rem;padding:1rem 1.2rem;color:var(--txt);
-  overflow:hidden;transition:max-height .35s ease,box-shadow .25s;box-sizing:border-box}
+ display:grid;grid-template-columns:1fr 70px;row-gap:.45rem;padding:1rem 1.2rem;color:var(--txt);
+ overflow:hidden;transition:max-height .35s ease,box-shadow .25s;box-sizing:border-box}
 @media(min-width:560px){.weather-card{max-width:500px}}
 .collapsed{box-shadow:0 6px 16px rgba(0,0,0,.07)}
 .expanded{box-shadow:0 12px 26px rgba(0,0,0,.16)}
@@ -33,18 +33,13 @@ h2{margin:0;font-size:1.05rem;grid-column:1/3}
 .temps{font-size:1.3rem;display:flex;gap:1.1rem}
 .extra{font-size:.9rem;display:flex;gap:1rem}
 .score{grid-column:2/3;align-self:start;justify-self:end;background:#fff;border-radius:16px;
-       width:60px;text-align:center;font-weight:700;font-size:1.35rem;padding:.3rem 0}
+ width:60px;text-align:center;font-weight:700;font-size:1.35rem;padding:.3rem 0}
 .good{background:var(--good)}.mid{background:var(--mid)}.bad{background:var(--bad)}
-
-canvas{width:100%;height:650px}
-@media(min-width:650px){canvas{height:800px}}
-@media(min-width:900px){canvas{height:950px}}
-
+canvas{width:100%;height:650px}@media(min-width:650px){canvas{height:800px}}@media(min-width:900px){canvas{height:950px}}
 .hvr{margin:.5rem 0;text-align:center;font-size:.95rem;font-weight:600;color:#555}
 .stats{display:flex;gap:1.3rem;justify-content:center;font-size:.95rem;flex-wrap:wrap}
 .stats span{white-space:nowrap;margin:.12rem 0}
-
-/* setup & suggestion (unchanged) */
+/* setup & suggestion */
 #setup{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:10}
 #setup>div{background:#fff;border-radius:12px;padding:2rem;width:90vw;max-width:420px;box-shadow:0 6px 16px rgba(0,0,0,.25);text-align:center}
 #setup label{display:block;margin:1rem 0 .25rem;font-weight:600}
@@ -68,7 +63,7 @@ button{background:#0a84ff;color:#fff;border:none;cursor:pointer}button:disabled{
 </div></section>
 
 <script>
-/* ── refs ── */
+/* refs */
 const cards=document.getElementById('cards'),setup=document.getElementById('setup'),
       cityIn=document.getElementById('cityInput'),unitSel=document.getElementById('unitSelect'),
       saveBtn=document.getElementById('saveBtn'),menuBtn=document.getElementById('menu-btn'),
@@ -76,18 +71,18 @@ const cards=document.getElementById('cards'),setup=document.getElementById('setu
 
 let data,coords,openCard=null,ctrl;
 
-/* helper FIRST so it’s hoisted */
+/* helper first (hoisted) */
 async function geo(city){
-  const res=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`).then(r=>r.json());
-  if(!res.results?.length)throw Error('City not found');
-  return {lat:res.results[0].latitude,lon:res.results[0].longitude,tz:res.results[0].timezone};
+  const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`).then(r=>r.json());
+  if(!r.results?.length)throw Error('City not found');
+  const g=r.results[0];return{lat:g.latitude,lon:g.longitude,tz:g.timezone};
 }
 const bg=s=>s>=75?'good':s>=50?'mid':'bad';
-const score=(d,i)=>{let s=100,tC=d.units==='imperial'?(d.tempAvg[i]-32)*5/9:d.tempAvg[i];
-  s-=Math.abs(tC-22);s-=d.aqiMax[i]==='–'?15:d.aqiMax[i]/4;s-=d.daily.windspeed_10m_max[i]/8;s-=Math.abs(d.daily.relative_humidity_2m_mean[i]-50)/4;
+const score=(d,i)=>{let s=100,t=d.units==='imperial'?(d.tempAvg[i]-32)*5/9:d.tempAvg[i];
+  s-=Math.abs(t-22);s-=d.aqiMax[i]==='–'?15:d.aqiMax[i]/4;s-=d.daily.windspeed_10m_max[i]/8;s-=Math.abs(d.daily.relative_humidity_2m_mean[i]-50)/4;
   return Math.max(1,Math.min(100,Math.round(s)));};
 
-/* restore */
+/* restore last city */
 (()=>{const c=localStorage.getItem('city');if(c){unitSel.value=localStorage.getItem('units')||'metric';load(c,unitSel.value);setup.style.display='none';}})();
 
 /* suggestions */
@@ -105,22 +100,21 @@ suggest.addEventListener('click',e=>{if(e.target.tagName!=='LI')return;cityIn.va
 saveBtn.addEventListener('click',()=>{const c=cityIn.value.trim();if(!c)return;localStorage.setItem('city',c);localStorage.setItem('units',unitSel.value);setup.style.display='none';load(c,unitSel.value);});
 menuBtn.addEventListener('click',()=>{cards.innerHTML='';setup.style.display='flex';});
 
-/* load 7-day forecast */
-async function load(city,units){
+/* load forecast */
+async function load(city,u){
   titleEl.textContent=`Weather 7 — ${city}`;
   coords=await geo(city);
-  const tU=units==='imperial'?'fahrenheit':'celsius',wU=units==='imperial'?'mph':'kmh';
+  const tU=u==='imperial'?'fahrenheit':'celsius',wU=u==='imperial'?'mph':'kmh';
   const wx=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&daily=temperature_2m_max,temperature_2m_min,relative_humidity_2m_mean,windspeed_10m_max&timezone=${coords.tz}&temperature_unit=${tU}&wind_speed_unit=${wU}`).then(r=>r.json());
-  wx.units=units;wx.tempAvg=wx.daily.temperature_2m_max.map((m,i)=>(m+wx.daily.temperature_2m_min[i])/2);
-  const start=wx.daily.time[0],end=wx.daily.time[6];
-  const aq=await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${coords.lat}&longitude=${coords.lon}&hourly=us_aqi&start=${start}T00:00&end=${end}T23:00&timezone=${coords.tz}`).then(r=>r.json()).catch(()=>({}));
+  wx.units=u;wx.tempAvg=wx.daily.temperature_2m_max.map((m,i)=>(m+wx.daily.temperature_2m_min[i])/2);
+  const aq=await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${coords.lat}&longitude=${coords.lon}&hourly=us_aqi&start=${wx.daily.time[0]}T00:00&end=${wx.daily.time[6]}T23:00&timezone=${coords.tz}`).then(r=>r.json()).catch(()=>({}));
   wx.aqiMax=Array(7).fill('–');
-  if(aq.hourly?.time){const bucket={};aq.hourly.time.forEach((t,i)=>{const d=t.slice(0,10);(bucket[d]??=[]).push(aq.hourly.us_aqi[i]);});
-    wx.daily.time.forEach((d,i)=>{const arr=bucket[d];if(arr)wx.aqiMax[i]=Math.max(...arr);});}
+  if(aq.hourly?.time){const b={};aq.hourly.time.forEach((t,i)=>{const d=t.slice(0,10);(b[d]??=[]).push(aq.hourly.us_aqi[i]);});
+    wx.daily.time.forEach((d,i)=>{const a=b[d];if(a)wx.aqiMax[i]=Math.max(...a);});}
   wx.score=wx.daily.time.map((_,i)=>score(wx,i));data=wx;render();
 }
 
-/* render list */
+/* render */
 function render(){
   cards.innerHTML='';openCard=null;
   const d=data,suf=d.units==='imperial'?'°F':'°C',today=new Date();today.setHours(0,0,0,0);
@@ -146,17 +140,19 @@ function render(){
   });
 }
 
-/* toggle expand/collapse */
+/* expand/collapse with two-frame rAF ── FIX HERE */
 async function toggle(card,idx){
   if(card===openCard){collapse(card.querySelector('button'));return;}
   if(openCard){openCard.classList.replace('expanded','collapsed');openCard.style.maxHeight='';openCard=null;}
+
   card.classList.replace('collapsed','expanded');openCard=card;
-  await build(card,idx);            /* detail built */
-  requestAnimationFrame(()=>        /* allow layout pass */
-    requestAnimationFrame(()=>{     /* now true height */
-      card.style.maxHeight=card.scrollHeight+'px';
-    })
-  );
+  await build(card,idx);              /* detail ready */
+
+  card.style.maxHeight='none';        /* release lock */
+  requestAnimationFrame(()=>{         /* give layout a frame */
+    const full=card.scrollHeight;     /* now true height */
+    card.style.maxHeight=full+'px';   /* animate to it */
+  });
 }
 function collapse(btn){const c=btn.closest('.weather-card');c.classList.replace('expanded','collapsed');c.style.maxHeight='';openCard=null;}
 
