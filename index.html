@@ -9,7 +9,7 @@
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#0a84ff">
 
-  <!-- iOS standalone support -->
+  <!-- iOS standalone -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
 
@@ -17,87 +17,68 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 
   <style>
-    body {
-      margin: 0;
-      height: 100vh;
-      display: flex; align-items: center; justify-content: center;
-      font-family: 'Inter', system-ui, sans-serif;
-      background: #e5ecf2;
-      text-align: center;
+    :root{
+      --bg:#e5ecf2; --txt:#222; --accent:#0a84ff;
+      --glass:rgba(255,255,255,.25); --blur:blur(14px);
+      --radius:20px;
     }
-    .glass {
-      background: rgba(255,255,255,.25);
-      backdrop-filter: blur(14px);
-      border-radius: 20px;
-      box-shadow: 0 8px 24px rgba(0,0,0,.14);
-      padding: 2rem;
-      max-width: 320px;
-      width: 90vw;
+    html,body{margin:0;height:100%;overflow:hidden;font-family:'Inter',system-ui,sans-serif;background:var(--bg)}
+    body{display:flex;flex-direction:column;align-items:center;justify-content:center;touch-action:none}
+
+    .glass{
+      background:var(--glass);backdrop-filter:var(--blur);
+      border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.15);
+      padding:2rem;text-align:center;width:90vw;max-width:320px;
     }
-    button {
-      margin: 0.5rem;
-      padding: .8rem 1.2rem;
-      font-size: 1rem;
-      border: none;
-      border-radius: 9999px;
-      background: #0a84ff;
-      color: #fff;
-      cursor: pointer;
+    h1{margin-top:0;color:var(--accent)}
+    p{margin:1rem 0}
+    button{
+      margin-top:1rem;padding:.75rem 1.2rem;font-size:1rem;
+      border:none;border-radius:9999px;background:var(--accent);color:#fff;cursor:pointer;
     }
-    #installBtn {
-      display: none;
-      position: fixed;
-      bottom: 1rem;
-      right: 1rem;
-      padding: 1rem;
-      border-radius: 9999px;
-      background: #0a84ff;
-      color: #fff;
-      border: none;
-      cursor: pointer;
-      z-index: 1000;
+    #installBtn{
+      display:none;position:fixed;bottom:1rem;right:1rem;
+      padding:1rem;border:none;border-radius:9999px;
+      background:var(--accent);color:#fff;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.15);
+      z-index:1000;
     }
   </style>
 </head>
 <body>
   <div class="glass">
     <h1>Welcome to Weather 7</h1>
-    <p>Tap the menu ⋮ and choose “Add to Home screen” or use the button below.</p>
+    <p>Tap the menu ⋮ and choose “Add to Home screen,” or use the button below.</p>
     <button id="goApp">Go to App</button>
   </div>
 
-  <!-- Install button -->
   <button id="installBtn">⬇️ Install</button>
 
   <script>
-    // Register Service Worker
+    // Register SW
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/service-worker.js')
         .catch(err => console.error('SW registration failed:', err));
     }
 
-    // Redirect to app.html if already installed
+    // Redirect if already standalone
     if (window.matchMedia('(display-mode: standalone)').matches ||
         window.navigator.standalone === true) {
       location.href = '/app.html';
     }
 
-    // "Go to App" button
+    // “Go to App” button
     document.getElementById('goApp').onclick = () => {
       location.href = '/app.html';
     };
 
-    // Handle the PWA install prompt
+    // Handle install prompt
     let deferredPrompt;
     const installBtn = document.getElementById('installBtn');
-
-    window.addEventListener('beforeinstallprompt', (e) => {
-      // Prevent the default mini-infobar
+    window.addEventListener('beforeinstallprompt', e => {
       e.preventDefault();
       deferredPrompt = e;
       installBtn.style.display = 'block';
     });
-
     installBtn.addEventListener('click', async () => {
       installBtn.style.display = 'none';
       if (!deferredPrompt) return;
