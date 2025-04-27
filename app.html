@@ -6,15 +6,15 @@
       content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Weather 7</title>
 
-<!-- modern PWA flags -->
+<!-- modern, cross-platform “run standalone” flag -->
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 
-<!-- Chart.js for graphs -->
+<!-- Chart.js for hoverable graphs -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
 <style>
-/* ---- styling unchanged; truncated for brevity ---- */
+/* …—— all CSS unchanged (cards, overlay, modal, etc.) ——… */
 :root{--accent:#0a84ff;--card-bg:#fff;--card-txt:#222;--small:.5}
 html,body{margin:0;height:100%;overflow:hidden;font-family:system-ui,sans-serif;background:#f4f6fb}
 body{display:flex;flex-direction:column;touch-action:none}
@@ -27,7 +27,7 @@ header{padding:1rem;text-align:center;font-weight:600;font-size:1.25rem;color:va
 .temps{font-size:1.5rem;display:flex;gap:1.25rem}
 .extra{margin-top:.5rem;display:flex;gap:1.25rem;font-size:.95rem}
 .aqi{font-weight:600}
-/* setup & modal styles unchanged … */
+/* setup & modal CSS identical to previous versions */
 </style>
 </head>
 <body>
@@ -35,14 +35,14 @@ header{padding:1rem;text-align:center;font-weight:600;font-size:1.25rem;color:va
 <div id="cards"></div>
 <button id="menu-btn" aria-label="settings">⚙️</button>
 
-<!-- setup overlay -->
-<section id="setup"> …<!-- same markup as before -->… </section>
+<!-- setup overlay (same markup) -->
+<section id="setup"> … </section>
 
-<!-- detail modal -->
-<div id="modal"> …<!-- same markup as before -->… </div>
+<!-- detail modal (same markup) -->
+<div id="modal"> … </div>
 
 <script>
-/* -------- DOM refs & state -------- */
+/* === DOM refs & global state (same as before) === */
 const cards=document.getElementById('cards'),setup=document.getElementById('setup'),
       cityIn=document.getElementById('cityInput'),unitSel=document.getElementById('unitSelect'),
       saveBtn=document.getElementById('saveBtn'),menuBtn=document.getElementById('menu-btn'),
@@ -52,74 +52,68 @@ const cards=document.getElementById('cards'),setup=document.getElementById('setu
 
 let masterData=null,coords=null,lastChart=null;
 
-/* ----- fullscreen on first tap ----- */
+/* full-screen once user taps */
 document.addEventListener('touchend',()=>{if(window.matchMedia('(display-mode: standalone)').matches&&document.fullscreenEnabled&&!document.fullscreenElement){document.documentElement.requestFullscreen().catch(()=>{});}}, {once:true});
 
-/* ----- restore prefs ----- */
-(()=>{const c=localStorage.getItem('city'),u=localStorage.getItem('units')||'metric';if(c){unitSel.value=u;fetchWeather(c,u);setup.style.display='none';}})();
+/* restore prefs */
+(()=>{const c=localStorage.getItem('city'),u=localStorage.getItem('units')||'metric';
+if(c){unitSel.value=u;fetchWeather(c,u);setup.style.display='none';}})();
 
-/* ----- suggestion dropdown (unchanged) ----- */
+/* suggestions (unchanged) */
 let aborter;
-cityIn.addEventListener('input', async ()=>{
-  const q=cityIn.value.trim();
-  suggest.innerHTML='';suggest.style.display='none';
-  if(q.length<3)return;
+cityIn.addEventListener('input',async()=>{const q=cityIn.value.trim();
+  suggest.innerHTML='';suggest.style.display='none';if(q.length<3)return;
   if(aborter)aborter.abort();aborter=new AbortController();
-  try{
-    const url=`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=10`;
+  try{const url=`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=10`;
     const res=await fetch(url,{signal:aborter.signal}).then(r=>r.json());
-    res.results?.forEach(loc=>{
-      const li=document.createElement('li');
+    res.results?.forEach(loc=>{const li=document.createElement('li');
       li.textContent=`${loc.name}${loc.admin1?', '+loc.admin1:''}, ${loc.country}`;
-      li.dataset.city=loc.name;suggest.appendChild(li);
-    });
+      li.dataset.city=loc.name;suggest.appendChild(li);});
     if(suggest.childElementCount)suggest.style.display='block';
-  }catch{}
-});
+  }catch{}});
 suggest.addEventListener('click',e=>{if(e.target.tagName!=='LI')return;cityIn.value=e.target.dataset.city;suggest.style.display='none';});
 
-/* ----- save prefs ----- */
+/* save prefs */
 saveBtn.addEventListener('click',()=>{const c=cityIn.value.trim();if(!c)return;
   const u=unitSel.value;localStorage.setItem('city',c);localStorage.setItem('units',u);
   setup.style.display='none';fetchWeather(c,u);});
 menuBtn.addEventListener('click',()=>{cards.innerHTML='';setup.style.display='flex';});
 
-/* ===================================================== */
-/*  FETCH 7-DAY WEATHER  +  COMPUTE DAILY AQI MAXIMA     */
-/* ===================================================== */
+/* -------------------------------------------------- */
+/*  Fetch 7-day weather + compute daily AQI maxima    */
+/* -------------------------------------------------- */
 async function fetchWeather(city,units){
   titleEl.textContent=`Weather 7 – ${city}`;
   try{
-    /* geocode */
-    const g=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`).then(r=>r.json());
-    if(!g.results?.length)throw Error('city not found');
-    const {latitude,longitude,timezone}=g.results[0];
+    /* 1. geocode */
+    const geo=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`).then(r=>r.json());
+    if(!geo.results?.length)throw Error('city not found');
+    const {latitude,longitude,timezone}=geo.results[0];
     coords={lat:latitude,lon:longitude,tz:timezone};
 
-    /* daily weather (no AQI) */
+    /* 2. daily weather (note: **no us_aqi_max requested**) */
     const tempU=units==='imperial'?'fahrenheit':'celsius',windU=units==='imperial'?'mph':'kmh';
     const wxURL=`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}`+
                 `&daily=temperature_2m_max,temperature_2m_min,relative_humidity_2m_mean,windspeed_10m_max`+
                 `&timezone=${timezone}&temperature_unit=${tempU}&wind_speed_unit=${windU}`;
     const wx=await fetch(wxURL).then(r=>r.json());
 
-    /* hourly AQI → daily maxima */
+    /* 3. hourly AQI → daily maxima */
     const start=wx.daily.time[0],end=wx.daily.time[6];
     const aqURL=`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}`+
                 `&hourly=us_aqi&start=${start}T00:00&end=${end}T23:00&timezone=${timezone}`;
     const aq=await fetch(aqURL).then(r=>r.json()).catch(()=>({}));
-
     const aqiMax=Array(7).fill('–');
     if(aq.hourly?.time){
-      const map={};aq.hourly.time.forEach((t,i)=>{const d=t.slice(0,10);(map[d]??=[]).push(aq.hourly.us_aqi[i]);});
-      wx.daily.time.slice(0,7).forEach((dStr,i)=>{const arr=map[dStr];if(arr)aqiMax[i]=Math.max(...arr);});
+      const bucket={};aq.hourly.time.forEach((t,i)=>{const d=t.slice(0,10);(bucket[d]??=[]).push(aq.hourly.us_aqi[i]);});
+      wx.daily.time.slice(0,7).forEach((dStr,i)=>{const arr=bucket[dStr];if(arr)aqiMax[i]=Math.max(...arr);});
     }
     wx.aqiMax=aqiMax;wx.units=units;masterData=wx;
     renderCards();
   }catch(err){alert('Sorry – '+err.message);}
 }
 
-/* -------- render card list -------- */
+/* render card list */
 function renderCards(){
   cards.innerHTML='';
   const d=masterData;if(!d)return;
@@ -131,7 +125,6 @@ function renderCards(){
       const i=o.i,card=document.createElement('div');
       card.className='weather-card'+(idx?' small':'');
       card.style.animationDelay=(idx*.08)+'s';
-      card.dataset.index=i;
       const nice=o.date.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
       card.innerHTML=`
         <h2>${nice}</h2>
@@ -147,7 +140,7 @@ function renderCards(){
     });
 }
 
-/* -------- modal detail view -------- */
+/* detail modal (unchanged logic) */
 async function openDetail(dayIdx){
   if(lastChart){lastChart.destroy();lastChart=null;}
   const d=masterData,u=d.units,suf=u==='imperial'?'°F':'°C',dateISO=d.daily.time[dayIdx];
@@ -155,12 +148,11 @@ async function openDetail(dayIdx){
 
   /* hourly temps */
   let labels=[],temps=[];
-  try{
-    const hURL=`https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}`+
-               `&hourly=temperature_2m,relativehumidity_2m,windspeed_10m&start_date=${dateISO}&end_date=${dateISO}`+
-               `&timezone=${coords.tz}&temperature_unit=${u==='imperial'?'fahrenheit':'celsius'}&wind_speed_unit=${u==='imperial'?'mph':'kmh'}`;
-    const h=await fetch(hURL).then(r=>r.json());
-    if(h.hourly?.time?.length){labels=h.hourly.time.map(t=>t.slice(11,16));temps=h.hourly.temperature_2m;}
+  try{const hURL=`https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}`+
+                 `&hourly=temperature_2m,relativehumidity_2m,windspeed_10m&start_date=${dateISO}&end_date=${dateISO}`+
+                 `&timezone=${coords.tz}&temperature_unit=${u==='imperial'?'fahrenheit':'celsius'}&wind_speed_unit=${u==='imperial'?'mph':'kmh'}`;
+      const h=await fetch(hURL).then(r=>r.json());
+      if(h.hourly?.time?.length){labels=h.hourly.time.map(t=>t.slice(11,16));temps=h.hourly.temperature_2m;}
   }catch{}
 
   chartCanvas.getContext('2d').clearRect(0,0,chartCanvas.width,chartCanvas.height);
