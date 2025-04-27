@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Weather 7</title>
+
+<style>
+:root{
+  --accent:#0a84ff;
+  --card-bg:#fff;
+  --card-text:#222;
+  --small-factor:.5;
+}
+/* layout */
+body{margin:0;font-family:system-ui,sans-serif;background:#f4f6fb;overflow-y:scroll}
+header{padding:1rem;text-align:center;font-weight:600;font-size:1.25rem;color:var(--accent)}
+#cards{display:flex;flex-direction:column;align-items:center;gap:1rem;padding-bottom:3rem}
+/* cards */
+.weather-card{width:90vw;max-width:500px;background:var(--card-bg);color:var(--card-text);
+  border-radius:18px;box-shadow:0 6px 16px rgba(0,0,0,.08);
+  padding:1rem 1.25rem;opacity:0;transform:translateY(30px);
+  animation:fadeSlide .6s ease forwards}
+.weather-card.small{scale:var(--small-factor);transform-origin:top center}
+.weather-card h2{margin:0 0 .25rem;font-size:1.1rem}
+.temps{font-size:1.5rem;display:flex;gap:1.25rem}
+.extra{margin-top:.5rem;display:flex;gap:1.25rem;font-size:.95rem}
+@keyframes fadeSlide{to{opacity:1;transform:translateY(0)}}
+/* first-run overlay */
+#setup{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;
+  align-items:center;justify-content:center}
+#setup>div{background:#fff;border-radius:12px;padding:2rem;width:90vw;max-width:420px;
+  box-shadow:0 6px 16px rgba(0,0,0,.25);text-align:center}
+#setup label{display:block;margin:1rem 0 .25rem;font-weight:600}
+#setup input,#setup select,button{width:100%;padding:.75rem 1rem;font-size:1rem;
+  border-radius:8px;border:1px solid #ccc}
+button{background:var(--accent);color:#fff;border:none;cursor:pointer}
+button:disabled{opacity:.6;cursor:not-allowed}
+/* settings shortcut */
+#menu-btn{position:fixed;top:1rem;right:1rem;background:#fff;border-radius:50%;
+  width:44px;height:44px;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 12px rgba(0,0,0,.12)}
+</style>
+</head>
+<body>
+<header id="title">Weather 7</header>
+<div id="cards"></div>
+<button id="menu-btn" aria-label="change location">⚙️</button>
+
+<!-- first-run city/unit picker -->
+<section id="setup" hidden>
+  <div>
+    <h2>Choose your city</h2>
+    <label>City</label>
+    <input id="cityInput" placeholder="e.g. New York">
+    <label>Units</label>
+    <select id="unitSelect">
+      <option value="metric">Celsius / km h</option>
+      <option value="imperial">Fahrenheit / mph</option>
+    </select>
+    <button id="saveBtn">Save & continue</button>
+  </div>
+</section>
+
+<script>
+/* DOM shortcuts */
+const cardsEl  = document.getElementById('cards');
+const setupEl  = document.getElementById('setup');
+const cityIn   = document.getElementById('cityInput');
+const unitSel  = document.getElementById('unitSelect');
+const saveBtn  = document.getElementById('saveBtn');
+const menuBtn  = document.getElementById('menu-btn');
+const titleEl  = document.getElementById('title');
+
+/* entry-point */
+(function init(){
+  const city  = localStorage.getItem('city');
+  const units = localStorage.getItem('units') || 'metric';
+  if (city) { unitSel.value = units; fetchWeather(city, units); }
+  else      { setupEl.hidden = false; }
+})();
+
+/* first-run save */
+saveBtn.addEventListener('click', () => {
+  const city = cityIn.value.trim();
+  if (!city) return;
+  const units = unitSel.value;
+  localStorage.setItem('city',  city);
+  localStorage.setItem('units', units);
+  setupEl.hidden = true;
+  fetchWeather(city, units);
+});
+
+/* change city later */
+menuBtn.addEventListener('click', () => {
+  cardsEl.innerHTML = '';
+  setupEl.hidden = false;
+});
+
+/* fetch & render */
+async function fetchWeather(city, units) {
+  titleEl.textContent = `Weather 7 – ${city}`;
+  try {
+    /* 1️⃣ geocode → lat / lon */
+    const geo = await fetch(
+      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`
+    ).then(r => r.json());
+    if (!geo.results?.length) throw new Error('City not found');
+    const { latitude, longitude, timezone } = geo.results[0];
+
+    /* 2️⃣ weather API */
+    const tempUnit  = units === 'imperial' ? 'fahrenheit' : 'celsius';
+    const windUnit  = units === 'imperial' ? 'mph'        : 'kmh';
+    const url =
+      `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}` +
+      `&daily=temperature_2m_max,temperature_2m_min,relative_humidity_2m_mean,windspeed_10m_max` +
+      `&timezone=${timezone}&temperature_unit=${tempUnit}&wind_speed_unit=${windUnit}`;
+    const data = await fetch(url).then(r => r.json());
+
+    renderCards(data, units);
+  } catch (err) {
+    alert('Sorry – ' + err.message);
+  }
+}
+
+/* UI builder */
+function renderCards(data, units) {
+  cardsEl.innerHTML = '';
+  const times = data.daily.time;
+  const hi    = data.daily.temperature_2m_max;
+  const lo    = data.daily.temperature_2m_min;
+  const hum   = data.daily.relative_humidity_2m_mean;
+  const wind  = data.daily.windspeed_10m_max;
+  const suf   = units === 'imperial' ? '°F' : '°C';
+
+  times.slice(0,7).forEach((t,i) => {
+    const d = new Date(t);
+    const nice = d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+    const card = document.createElement('div');
+    card.className = 'weather-card' + (i ? ' small' : '');
+    card.style.animationDelay = (i * .08)+'s';
+    card.innerHTML = `
+      <h2>${nice}</h2>
+      <div class="temps">
+        <span>⬆ ${Math.round(hi[i])}${suf}</span>
+        <span>⬇ ${Math.round(lo[i])}${suf}</span>
+      </div>
+      ${i===0 ? `
+      <div class="extra">
+        <span>💧 ${Math.round(hum[i])}%</span>
+        <span>💨 ${Math.round(wind[i])}</span>
+      </div>` : ''}`;
+    cardsEl.appendChild(card);
+  });
+}
+
+/* try to go fullscreen once already standalone */
+if (window.matchMedia('(display-mode: standalone)').matches &&
+    document.fullscreenEnabled) {
+  document.documentElement.requestFullscreen().catch(()=>{});
+}
+</script>
+</body>
+</html>
