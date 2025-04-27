@@ -5,16 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Weather 7 – Install</title>
 
-  <!-- PWA plumbing -->
+  <!-- PWA plumbing shared by all platforms -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0a84ff">
+
+  <!-- iOS-specific “run like an app” flags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Weather 7">
+  <link rel="apple-touch-icon" href="icons/icon-192.png"> <!-- 180×180 or larger recommended -->
+
   <script>
     /* service-worker */
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('service-worker.js');
     }
 
-    /* detect standalone → jump straight in */
+    /* jump straight to the app when already standalone */
     function launch() { location.href = 'app.html'; }
     function checkStandalone() {
       if (window.matchMedia('(display-mode: standalone)').matches ||
@@ -48,9 +55,9 @@
   </style>
 </head>
 <body>
-  <h1>Add <em>Weather 7</em> to your home screen</h1>
-  <p>On iOS → tap <strong>Share › Add to Home Screen</strong>.<br>
-     On Android → just hit <em>Install</em>.</p>
+  <h1>Add <em>Weather 7</em> to your Home Screen</h1>
+  <p>On iOS: tap <strong>Share › Add to Home Screen</strong>.<br>
+     On Android: tap <em>Install</em>.</p>
   <button id="installBtn" onclick="doInstall()">Install</button>
   <button onclick="launch()">Skip & open now</button>
 </body>
