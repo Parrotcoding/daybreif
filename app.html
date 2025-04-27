@@ -12,46 +12,49 @@
 :root{
   --bg:#e5ecf2; --txt:#222; --accent:#0a84ff;
 
-  /* glass */
-  --glass-bg   : rgba(255,255,255,.22);
-  --glass-blur : blur(14px);
-  --rad        : 20px;
-  --shad       : 0 8px 24px rgba(0,0,0,.14);
+  /* frosted-glass parameters */
+  --g-bg:rgba(255,255,255,.25);
+  --g-blur:blur(14px);
+  --g-rad:20px;
+  --g-shad:0 8px 24px rgba(0,0,0,.14);
 
-  /* tint */
-  --t-good:rgba(46,204,113,.37);
-  --t-mid :rgba(241,196,15,.37);
-  --t-bad :rgba(231,76,60,.37);
+  /* card tint */
+  --t-good:rgba(46,204,113,.35);
+  --t-mid :rgba(241,196,15,.35);
+  --t-bad :rgba(231,76,60,.35);
 }
 
 html,body{margin:0;height:100%;overflow:hidden;font-family:'Inter',system-ui,sans-serif;background:var(--bg)}
 body{display:flex;flex-direction:column;touch-action:none}
-
-.glass{
-  background:var(--glass-bg);backdrop-filter:var(--glass-blur);
-  border-radius:var(--rad);box-shadow:var(--shad)
-}
+.glass{background:var(--g-bg);backdrop-filter:var(--g-blur);border-radius:var(--g-rad);box-shadow:var(--g-shad)}
 
 /* header */
-header{padding:1rem;text-align:center}header>.glass{display:inline-block;padding:.35rem 1.4rem;font-weight:600;font-size:1.25rem;color:var(--accent)}
+header{padding:1rem;text-align:center}
+header>.glass{display:inline-block;padding:.35rem 1.4rem;font-weight:600;font-size:1.25rem;color:var(--accent)}
 
 /* card list */
 #cards{flex:1 1 auto;overflow-y:auto;padding-bottom:4rem;display:flex;flex-direction:column;align-items:center;gap:1.3rem}
-.weather-card{
-  width:90vw;max-width:320px;padding:1rem 1.2rem;display:grid;grid-template-columns:1fr 70px;row-gap:.45rem;
-  cursor:pointer;color:var(--txt);position:relative;overflow:hidden}
-.weather-card::before{content:'';position:absolute;inset:0;pointer-events:none;background:inherit;backdrop-filter:var(--glass-blur);border-radius:var(--rad)}
-.weather-card>*{position:relative;z-index:1}
+.weather-card{width:90vw;max-width:320px;padding:1rem 1.2rem;display:grid;grid-template-columns:1fr 70px;row-gap:.45rem;cursor:pointer;color:var(--txt);position:relative}
 @media(min-width:560px){.weather-card{max-width:500px}}
 .first{min-height:180px}.other{min-height:110px}
+/* frosted tint overlay */
+.weather-card.good{background:var(--t-good)}
+.weather-card.mid {background:var(--t-mid)}
+.weather-card.bad {background:var(--t-bad)}
+.weather-card{backdrop-filter:var(--g-blur);border-radius:var(--g-rad);box-shadow:var(--g-shad)}
+
 h2{margin:0;font-size:1.05rem;grid-column:1/3}
 .data{grid-column:1/2;display:flex;flex-direction:column;gap:.35rem}
 .temps{font-size:1.3rem;display:flex;gap:1.1rem}
 .extra{font-size:.9rem;display:flex;gap:1rem}
 .score{grid-column:2/3;align-self:start;justify-self:end;width:60px;text-align:center;font-weight:700;font-size:1.35rem;padding:.3rem 0;border-radius:14px;background:rgba(255,255,255,.55)}
-.good{background:var(--t-good)}.mid{background:var(--t-mid)}.bad{background:var(--t-bad)}
 
-/* full-page detail */
+.score::after{content:'';position:absolute;left:0;right:0;bottom:0;height:4px;border-radius:0 0 14px 14px}
+.good .score::after{background:#2ecc71}
+.mid  .score::after{background:#f1c40f}
+.bad  .score::after{background:#e74c3c}
+
+/* detail page */
 #detailPage{position:fixed;inset:0;padding:1.2rem;display:none;flex-direction:column;overflow-y:auto;z-index:40}
 .detailShell{display:flex;flex-direction:column;gap:1.3rem}
 .detailNav a{color:var(--accent);text-decoration:none;font-weight:600;font-size:1.05rem}
@@ -65,20 +68,18 @@ canvas{width:100%;height:650px}@media(min-width:650px){canvas{height:800px}}
 #setup{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);z-index:50}
 #setup>div{width:90vw;max-width:420px;padding:2rem 1.6rem;text-align:center}
 #setup label{display:block;margin:1rem 0 .25rem;font-weight:600}
-.pill{box-sizing:border-box;width:100%;padding:.8rem 1.1rem;font-size:1rem;border:1px solid rgba(255,255,255,.4);border-radius:9999px;background:var(--glass-bg);backdrop-filter:var(--glass-blur);color:var(--txt)}
+.pill{box-sizing:border-box;width:100%;padding:.8rem 1.1rem;font-size:1rem;border:1px solid rgba(255,255,255,.4);border-radius:9999px;background:var(--g-bg);backdrop-filter:var(--g-blur);color:var(--txt)}
 #sbox{position:relative}
 #suggest{position:absolute;top:100%;left:0;right:0;border:1px solid #ccc;border-top:none;max-height:220px;overflow-y:auto;display:none;z-index:60}
-#suggest li{padding:.6rem 1rem;cursor:pointer;background:var(--glass-bg);backdrop-filter:var(--glass-blur)}
+#suggest li{padding:.6rem 1rem;cursor:pointer;background:var(--g-bg);backdrop-filter:var(--g-blur)}
 #suggest li:hover{background:rgba(255,255,255,.45)}
 
 button{background:var(--accent);color:#fff;border:none;cursor:pointer}
 button:disabled{opacity:.6}
 
-/* round settings button */
+/* settings button */
 #menu-btn{position:fixed;top:1rem;right:1rem;width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:1.05rem}
-
-/* glass wrappers */
-.weather-card,.factRow,#setup>div,#suggest,.detailShell,.detailNav,#menu-btn{background:var(--glass-bg);backdrop-filter:var(--glass-blur);border-radius:var(--rad);box-shadow:var(--shad)}
+.weather-card,.factRow,#setup>div,#suggest,.detailShell,.detailNav,#menu-btn{background:var(--g-bg);backdrop-filter:var(--g-blur);border-radius:var(--g-rad);box-shadow:var(--g-shad)}
 </style>
 </head><body>
 <header><div class="glass" id="hdr">Weather 7</div></header>
@@ -105,7 +106,7 @@ button:disabled{opacity:.6}
 </div></section>
 
 <script>
-/* ------ JS: unchanged except class names for pill inputs ------ */
+/* ---- identical JS (no behaviour lost) ---- */
 const cards=document.getElementById('cards'),setup=document.getElementById('setup'),
 cityIn=document.getElementById('cityInput'),unitSel=document.getElementById('unitSelect'),
 saveBtn=document.getElementById('saveBtn'),suggest=document.getElementById('suggest'),
@@ -116,6 +117,7 @@ backBtn=document.getElementById('backBtn'),menuBtn=document.getElementById('menu
 
 let data,coords,chart;
 
+/* helpers */
 async function geo(c){const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(c)}&count=1`).then(r=>r.json());if(!r.results?.length)throw Error;return r.results[0];}
 const bg=s=>s>=75?'good':s>=50?'mid':'bad';
 const score=(d,i)=>{let s=100,t=d.units==='imperial'?(d.avg[i]-32)*5/9:d.avg[i];
@@ -139,7 +141,8 @@ function renderCards(){cards.innerHTML='';const d=data,suf=d.units==='imperial'?
     card.innerHTML=`<h2>${date.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})}</h2>
       <div class="score">${d.score[i]}</div>
       <div class="data"><div class="temps"><span>⬆ ${Math.round(d.daily.temperature_2m_max[i])}${suf}</span><span>⬇ ${Math.round(d.daily.temperature_2m_min[i])}${suf}</span></div>
-        <div class="extra"><span>💧 ${Math.round(d.hum[i])}%</span><span>💨 ${Math.round(d.wind[i])}</span><span>🗺 AQI ${d.aqi[i]}</span></div></div>${cards.childElementCount?card.querySelector('.extra').style.display='none':''}`;
+        <div class="extra"><span>💧 ${Math.round(d.hum[i])}%</span><span>💨 ${Math.round(d.wind[i])}</span><span>🗺 AQI ${d.aqi[i]}</span></div></div>`;
+    if(cards.childElementCount)card.querySelector('.extra').style.display='none';
     card.onclick=()=>openDetail(i);cards.appendChild(card);});}
 
 async function openDetail(idx){const d=data,u=d.units,suf=u==='imperial'?'°F':'°C',iso=d.daily.time[idx];detailDate.textContent=new Date(iso).toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
@@ -148,7 +151,7 @@ async function openDetail(idx){const d=data,u=d.units,suf=u==='imperial'?'°F':'
   chart=new Chart(chartCanvas,{type:'line',data:{labels,datasets:[{data:temps,tension:.35,borderWidth:3,pointRadius:0,borderColor:'#ff9100'}]},options:{plugins:{tooltip:{enabled:false},legend:{display:false}},interaction:{intersect:false,mode:'nearest'},animation:false}});
   chartCanvas.onmousemove=chartCanvas.ontouchmove=e=>{const pts=chart.getElementsAtEventForMode(e,'nearest',{intersect:false},false);if(pts.length){const j=pts[0].index;hoverOut.textContent=`${labels[j]} • ${temps[j]}${suf}`;}};
   chartCanvas.onmouseleave=chartCanvas.ontouchend=()=>hoverOut.textContent='';
-  factsBox.innerHTML='';const row=(ic,l,v)=>factsBox.insertAdjacentHTML('beforeend',`<div class="factRow"><span><span class="icon">${ic}</span>${l}</span><span class="val">${v}</span></div>`);
+  factsBox.innerHTML='';const row=(ic,l,v)=>factsBox.insertAdjacentHTML('beforeend',`<div class="factRow glass"><span><span class="icon">${ic}</span>${l}</span><span class="val">${v}</span></div>`);
   row('🗺','Air Quality Index',d.aqi[idx]);row('🌿','Pollen','1');row('💧','Humidity',`${Math.round(d.hum[idx])}%`);row('💨','Wind',`${Math.round(d.wind[idx])} ${u==='imperial'?'mph':'km/h'}`);detail.style.display='flex';}
 backBtn.onclick=e=>{e.preventDefault();detail.style.display='none';};
 
@@ -158,6 +161,7 @@ let sCtrl;cityIn.oninput=async()=>{const q=cityIn.value.trim();suggest.innerHTML
 suggest.onclick=e=>{if(e.target.tagName!=='LI')return;cityIn.value=e.target.dataset.city;suggest.style.display='none';};
 
 saveBtn.onclick=()=>{const c=cityIn.value.trim();if(!c)return;localStorage.setItem('city',c);localStorage.setItem('units',unitSel.value);setup.style.display='none';loadCity(c,unitSel.value);};
+
 (()=>{const c=localStorage.getItem('city');if(c)loadCity(c,localStorage.getItem('units')||'metric');})();
 </script>
 </body></html>
